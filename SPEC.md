@@ -35,7 +35,8 @@ Every decision belongs to one of these.
 1. **Entities are a flat list.** Nothing contains anything. There is no
    nesting in the data.
 2. **Each entity says where it is.** One place at a time. Ada is in the
-   mill, the mill is in Ashford. Walk up to get the city.
+   mill, the mill is in Ashford. Walk up to get the city. Decision 32
+   says this is a fact, not a field.
 3. **Location is not belonging.** Ada travels and her location changes.
    Ada stays a citizen of Ashford. Those are two different things.
 4. **An entity has a type**, from a closed list: Person, Place, Thing,
@@ -62,18 +63,18 @@ Every decision belongs to one of these.
 Decisions 21 to 24 sit here too. They are about facts, so they belong
 to question 1, but each one was settled by an argument about the log.
 
-10. **The `EventLog` is the truth.** Every change is an event. The
-    `EventLog` is append-only and ordered. Nothing is edited, and
+10. **The `EventHistory` is the truth.** Every change is an event. The
+    `EventHistory` is append-only and ordered. Nothing is edited, and
     nothing is removed.
 11. **The state is derived.** `apply(state, event)` takes one event
     and returns the next state. `replay(log)` runs `apply` over the
-    whole `EventLog` and rebuilds the state from nothing.
+    whole `EventHistory` and rebuilds the state from nothing.
 12. **`apply` is the only writer.** Nothing sets a fact directly.
-    Break this and the `EventLog` and the state drift apart, and then
+    Break this and the `EventHistory` and the state drift apart, and then
     neither one is worth trusting.
 
 ```
-EventLog                               the truth. append-only, ordered.
+EventHistory                           the truth. append-only, ordered.
    │
    │  apply, one event at a time
    ▼
@@ -85,19 +86,19 @@ prompt   text for the director
 ```
 
 13. **Both halves feed the prompt.** A director reads neither the
-    `EventLog` nor the state. It reads a prompt built from both. "How things are
+    `EventHistory` nor the state. It reads a prompt built from both. "How things are
     now" comes from the state — who is king, how bad the famine is.
-    "What just happened" comes from the tail of the `EventLog`. A
+    "What just happened" comes from the tail of the `EventHistory`. A
     director needs the first before it proposes anything.
 
-That is why neither half is optional. An `EventLog` with no state means
+That is why neither half is optional. An `EventHistory` with no state means
 a full `replay` on every prompt, and that gets slower as the world gets
-older. A state with no `EventLog` loses why anything happened.
+older. A state with no `EventHistory` loses why anything happened.
 
 14. **The name is `Fact`.** `Claim` is reserved. When the world gains
     "who knows this", a fact becomes something believed, and `Claim` is
     the right word for that layer.
-15. **The state is the present. The `EventLog` is the past.** A fact
+15. **The state is the present. The `EventHistory` is the past.** A fact
     that ends leaves the state. It is still in the log, so nothing is
     lost, and memory stays the size of the world today instead of the
     size of its whole history. So a `Fact` has no end.
@@ -116,7 +117,7 @@ older. A state with no `EventLog` loses why anything happened.
     The same field is the cause: "why is the mill burned" is one hop to
     the event that burned it.
 17. **The same events always give the same state.** `replay` on one
-    `EventLog` builds one state, on any machine, in any run. This is
+    `EventHistory` builds one state, on any machine, in any run. This is
     not a wish. It is a property `apply` must hold, and five things
     break it:
 
@@ -161,10 +162,11 @@ older. A state with no `EventLog` loses why anything happened.
     Sharing the middle three fields in a nested struct costs
     `fact.body.name` at every call site, forever, to save three fields.
     Not worth it.
-20. **Two event kinds so far: `FactStart` and `FactEnd`.** `FactStart`
-    makes a fact true. `FactEnd` takes it out of the state. Both stay
-    in the `EventLog` forever, so "the mill burned in year 51 and was
-    rebuilt in year 58" still answers.
+20. **`FactStart` and `FactEnd`.** `FactStart` makes a fact true.
+    `FactEnd` takes it out of the state. Both stay in the
+    `EventHistory` forever, so "the mill burned in year 51 and was
+    rebuilt in year 58" still answers. Decision 31 holds the full
+    set.
 
     The word "Fact" in the name says what the event ACTS ON. Not every
     event touches a fact — founding an entity and moving one do not.
@@ -241,6 +243,7 @@ older. A state with no `EventLog` loses why anything happened.
             numeric: bool,
             holders: Count,   // how many entities hold this about one target
             targets: Count,   // how many targets one entity holds it about
+            // decision 33 adds `allowed` here
         },
     }
     ```
@@ -289,6 +292,186 @@ older. A state with no `EventLog` loses why anything happened.
     once, because `FactStart` closes any open fact of the same name on
     that entity. One-per-entity is built in, not declared.
 
+30. **`EventHistory` is a type, not a bare `Vec`.** Decision 10 says
+    append-only. A `Vec` lets anyone call `.remove(3)`, and a rule that
+    lives only in a comment is a rule that breaks.
+
+    ```rust
+    struct EventHistory(Vec<Event>);
+
+    impl EventHistory {
+        fn push(&mut self, e: Event) -> EventId;   // the only way in
+        fn get(&self, id: EventId) -> Option<&Event>;
+        fn tail(&self, n: usize) -> &[Event];
+        fn next_id(&self) -> EventId;
+        fn len(&self) -> usize;
+    }
+    ```
+
+    No `remove`, no `clear`, no `IndexMut`. The guarantee lives on the
+    type, so it holds wherever the value goes.
+
+    **One exception, and it is deliberate.** "In chain terms" says
+    rollback is a real requirement — a child's undo cuts the history
+    and replays it. So there is exactly one method that shortens the
+    history:
+
+    ```rust
+    fn truncate(&mut self, after: EventId);
+    ```
+
+    One way to shorten it, named so it cannot happen by accident.
+
+31. **Five event kinds. That is the whole set.**
+
+    ```rust
+    enum EventKind {
+        EntityCreated   { id, entity_type, name },
+        EntityDestroyed { id },
+        FactStart       { entity, name, value, linked_to },
+        FactUpdate      { entity, name, linked_to, from: i64, to: i64 },
+        FactEnd         { entity, name, linked_to },
+    }
+    ```
+
+    Derived from what the state holds. An entity has a type, a name, a
+    location, an existence, and facts. Each of those changes, or it
+    does not.
+
+    `EntityCreated` is the one people ask about. Why not a fact? A fact
+    lives INSIDE an entity, so there has to be a row before anything is
+    true of it. And the event is not there to record the creation date
+    — `existence.from` already holds that. It is there because
+    `replay` rebuilds the state from the history, and a change that is
+    not in the history does not survive a replay.
+
+    Moving is not here. Decision 32 makes location a fact, so a move
+    is a `FactStart`. Placing a new entity is a `FactStart` too, so
+    `EntityCreated` carries no location. One event, one change.
+
+    `FactUpdate` is decision 33½. A house that burns and is rebuilt
+    reads like this, and rebuilding is a `FactEnd`, not a new entity:
+
+    ```
+    [10]  EntityCreated { 7, Place, "the Cooper house" }
+    [10]  FactStart     { 7, located_in → Ashford }
+    [51]  FactStart     { 7, burned }
+    [58]  FactEnd       { 7, burned }
+    ```
+
+    Same id throughout, so everyone who lived there still points at it.
+    `EntityDestroyed` is for a house that is gone for good, never for
+    one that needs repair.
+
+    Two things are NOT events, on purpose:
+
+    - **A type never changes.** A Person does not become a Place.
+    - **A name never changes.** A city renamed after a conquest is
+      real, and nothing has asked for it.
+
+32. **Location is a fact, and `located_in` is reserved.**
+
+    ```rust
+    located_in   Linked { numeric: false, holders: Many, targets: One }
+    ```
+
+    `targets: One` gives one place at a time. A move is a `FactStart`,
+    which closes the old one. `Entity.location` is gone, and so is
+    `EntityMoved`.
+
+    The reason is decision 5, applied again. A field is overwritten, so
+    "where was Ada when the mill burned" has no answer. A fact leaves
+    the old one in the history, so it does.
+
+    **The crate declares the name itself**, in every vocabulary, so a
+    consumer never types it and never misspells it:
+
+    ```rust
+    const LOCATED_IN: &str = "located_in";
+    ```
+
+    Because the crate knows that one name, it can offer the queries a
+    consumer would otherwise write twice:
+
+    ```rust
+    world.contents(mill)     // who is in there
+    world.ancestry(ada)      // the mill, then Ashford
+    ```
+
+    And it can refuse a cycle. Ashford inside the mill inside Ashford
+    hangs any walk up the chain, so that check stays in `validate`.
+
+33. **A linked fact declares which entity types it allows**, as a map
+    from holder to targets.
+
+    ```rust
+    Linked {
+        numeric: bool,
+        holders: Count,
+        targets: Count,
+        allowed: BTreeMap<EntityType, Vec<EntityType>>,   // empty = any
+    }
+    ```
+
+    ```rust
+    located_in   Person => [Place],
+                 Thing  => [Person, Place],
+                 Place  => [Place]
+
+    king_of      Person => [Place]
+
+    hates        {}
+    ```
+
+    It reads as the rule itself. A Person goes in a Place. A Thing goes
+    in a Person or a Place.
+
+    **Two lists do not work.** `holder_types: [Person, Thing, Place]`
+    and `target_types: [Place, Person]` allow every combination of the
+    two — six, when four are wanted. `Person => Person` slips in, and
+    "Ada is inside Bren" passes. A map cannot leak a corner, because
+    each holder names its own targets.
+
+    **One mechanism, nothing hardcoded.** An earlier draft kept a
+    special `EntityType::can_contain` table for `located_in` alone.
+    That gave the crate's own fact an exact rule that no consumer
+    could use, for one job. This map serves every fact, and
+    `located_in` is only different in that the crate declares it.
+
+    `BTreeMap` and not `HashMap`, for decision 17.
+
+33½. **`FactUpdate` changes a number.** The treasury falls from 4000
+    to 900.
+
+    ```
+    [3]   FactStart  { Ashford, treasury, 4000 }
+    [40]  FactUpdate { Ashford, treasury, 4000 -> 900 }
+    ```
+
+    Three reasons over a second `FactStart`:
+
+    - **No hidden side effect.** A second `FactStart` silently ends the
+      first, so the history shows a start and hides an end. This says
+      it is a change.
+    - **`from` is a stale check.** A director reads a briefing, thinks,
+      and proposes. If the treasury moved meanwhile, `from: 4000` no
+      longer matches and `validate` refuses it as a `Contradiction`.
+      That is a compare-and-swap, and it matters when the proposer
+      works from a snapshot.
+    - **Narration gets the delta free.** "The treasury fell by 3100."
+
+    `from` is derivable from the state, so it is duplication. The stale
+    check earns it.
+
+    **Numbers only.** A flag has no value to change, so `validate`
+    refuses `FactUpdate` on one. And it cannot change a NAME: `burned`
+    becoming `grand` is one fact ending and another starting, because
+    `FactUpdate` holds one `name`.
+
+    Inside, it is still an end and a start, because decision 15 says a
+    new value is a new fact. One line in the history for two things in
+    the state.
+
 ### From question 3: who decides the change
 
 26. **The director lives outside this crate.** It is called SandMan.
@@ -310,7 +493,7 @@ older. A state with no `EventLog` loses why anything happened.
 27. **Hourglass picks what matters. The consumer writes the words.**
 
     ```rust
-    world.view(for_entity, budget) -> View   // structured. no text.
+    world.brief(for_entity, budget) -> Briefing   // structured. no text.
     ```
 
     A world of five hundred entities does not fit in a prompt. Choosing
@@ -336,14 +519,145 @@ older. A state with no `EventLog` loses why anything happened.
     ```
 
     Linked facts, `holders: Many`, `targets: Many`. Ranking is a query
-    over facts, not a new structure. `view` uses it to choose the
+    over facts, not a new structure. `brief` uses it to choose the
     twenty, and a director uses it to choose which house burns. A
     random house means nothing. The house the player slept in is a
     story.
 29. **There is no player type.** A player is a `Person`. The consumer
     holds the mapping from an account to an `EntityId`, and Hourglass
     never learns what an account is. "Who is looking" is an argument to
-    `view`, not a field on an entity.
+    `brief`, not a field on an entity.
+
+### From question 4: what stops a bad change
+
+34. **The vocabulary goes into the prompt.** It already holds every
+    rule that does not depend on the world: the names, which take a
+    number, which take a target, how many, and which entity types.
+    That is machine-readable, so the crate renders it:
+
+    ```
+    burned      a flag, on anything
+    treasury    a number, on anything
+    king_of     a flag, Person to Place, one king per place
+    hates       a number, Person to Person, any many
+    ```
+
+    Same move as Sandcastle's sprite names: a closed list in, a closed
+    list out. This removes every SHAPE mistake before the model runs —
+    an invented name, a missing number, a wrong type.
+35. **Rejections carry the rest, because the rest is about the world.**
+    No text up front prevents these:
+
+    ```
+    Ashford already has a king
+    Ada is dead
+    that would put Ashford inside itself
+    ```
+
+    They are not facts about the fact. They are facts about the state
+    right now. So the two layers are not alternatives. The vocabulary
+    catches shape, and a rejection catches situation.
+36. **A refusal returns every reason at once.** Not the first one. One
+    retry then fixes everything, instead of one round trip per mistake.
+37. **A tick proposes several events, and each stands alone.** The good
+    ones land, and only the bad ones come back. A bad proposal costs
+    one event, never the whole tick.
+
+    All-or-nothing is what makes an LLM loop expensive. Partial
+    acceptance is the fix, and it is free — `validate` already runs per
+    event.
+
+38. **A rejection is `Malformed` or `Contradiction`.** Both break a
+    rule. They differ in WHICH rule, and the difference tells SandMan
+    what to do.
+
+    ```rust
+    enum Rejection {
+        /// Wrong on its own. Checking it needs only the vocabulary.
+        Malformed(Malformed),
+        /// Fine on its own. It contradicts the world as it is now.
+        Contradiction(Contradiction),
+    }
+
+    enum Malformed {
+        UnknownFact    { name: String },
+        NeedsNumber    { name: String },
+        TakesNoNumber  { name: String },
+        NeedsTarget    { name: String },
+        TakesNoTarget  { name: String },
+        TypeNotAllowed { name: String, holder: EntityType, target: EntityType },
+    }
+
+    enum Contradiction {
+        UnknownEntity  { id: EntityId },
+        Gone           { id: EntityId },
+        SelfReference  { id: EntityId },
+        Cycle          { entity: EntityId, through: EntityId },
+        TooManyHolders { name: String, target: EntityId, held_by: Vec<EntityId>, limit: u16 },
+        TooManyTargets { name: String, holder: EntityId, pointing_at: Vec<EntityId>, limit: u16 },
+    }
+    ```
+
+    A `Malformed` means the PROMPT failed. Decision 34 put the whole
+    vocabulary in front of the model, and the model ignored it. A
+    `Contradiction` means the model was reasonable and the world moved.
+    Fix the prompt, or retry with fresh context. Two different
+    responses, so they are two different types.
+
+39. **A rejection names what is in the way.** That is the "how to fix",
+    and it is data, not prose:
+
+    ```
+    TooManyHolders { name: "king_of", target: Ashford, held_by: [Ada], limit: 1 }
+    ```
+
+    End Ada's `king_of`, and the retry lands. The crate says what
+    blocks it. It does NOT say what to do about it — crowning Bren
+    somewhere else is an equally good answer, and the crate cannot know
+    which one the story wants. That is the boundary from decision 26.
+
+    This forces one thing on `validate`: it gathers the blockers before
+    it refuses. It cannot return early on the first failure.
+
+40. **No prose in a `Rejection`.** Words live outside, per decision 27.
+    A `Display` impl gives a default line, and SandMan words it its own
+    way.
+
+41. **`Briefing` is what the crate hands SandMan.** Two cuts, not one.
+
+    ```rust
+    world.brief(for_entity, budget) -> Briefing
+
+    struct Briefing {
+        entities: Vec<&Entity>,   // the ones that matter, as they are NOW
+        recent:   &[Event],       // the last few things that happened, anywhere
+    }
+    ```
+
+    ```
+    Briefing for Ada
+
+    entities   Ada          king of Ashford
+               Ashford      treasury 900
+               The Mill     burned
+               Bren         hates Ada
+
+    recent     [51] the mill burned
+               [52] treasury fell to 900
+               [53] Elin died
+    ```
+
+    Entities are cut by what matters, and carry the present, not their
+    history. Events are cut by recency, across the whole world, not per
+    entity. It is not a history query. It is one snapshot plus one
+    tail, which is decision 13 made concrete.
+
+    In a small world — a child's game with thirty entities — the cut
+    does nothing and the briefing is the whole state. The cut exists
+    for the world with five hundred.
+
+    The word is `Briefing` and not `Snapshot`, because the spec already
+    uses "snapshot" for a rolled-up state at a cut in the history.
 
 ## In chain terms
 
@@ -352,7 +666,7 @@ The shape is a chain, so the words carry over:
 | Hourglass | Ethereum |
 |---|---|
 | `Event` | a transaction |
-| `EventLog` | the chain |
+| `EventHistory` | the chain |
 | state — entities and facts | world state |
 | `validate` | validity rules |
 | `apply` | the state transition function |
@@ -373,18 +687,18 @@ must be feedback a director reads and acts on. A boolean is not enough.
 
 **Rollback is a real requirement, and it is cheap here.** Sandcastle
 already gives a child undo and checkpoints. Undo is a rollback: cut the
-`EventLog` at a point and `replay` it. That costs nothing because
+`EventHistory` at a point and `replay` it. That costs nothing because
 `apply` builds state from nothing. State that changed in place would
 need a reverse operation for every kind of event.
 
 ## The types
 
-Ten types are agreed. Each one below says what it is and why it
+Sixteen types are agreed. Each one below says what it is and why it
 exists.
 
 **`EntityId`** — Uniquely identifies an entity
 
-**`EventId`** — the position of one event in the `EventLog`.
+**`EventId`** — the position of one event in the `EventHistory`.
 
 **`Tick`** — one step of world time. A tick is not a frame. It is as
 long as the game says: an hour, a day, a season.
@@ -400,25 +714,43 @@ closed list the engine refuses "the sword died" and "the faction is in
 the mill". With free text it cannot.
 
 **`Entity`** — one person, place, thing, or faction. It carries a name
-that a person reads, a type, and two things that make it real: where it
-sits, and how long it has been here. `location` holds one parent, so a
-thing is in exactly one place. `existence` is a `TimeSpan`, so the world
-knows Ada was alive in year 12 and gone by year 50.
+that a person reads, a type, how long it has been here, and its facts.
+`existence` is a `TimeSpan`, so the world knows Ada was alive in year 12
+and gone by year 50. Where it sits is a fact, not a field — see
+decision 32.
 
 **`Fact`** — one thing that is true of an entity RIGHT NOW. The mill is
 burned. The treasury holds 4000. Ada is king of Ashford. A fact holds no
 time of its own. It points at the event that opened it, and that event
 carries the tick and the reason. When a fact ends it leaves the state,
-and the `EventLog` keeps it.
+and the `EventHistory` keeps it.
+
+**`Event`** — one thing that happened, at one tick.
+
+**`EventKind`** — the five things that can happen. A closed list, so a
+director can never invent a change nobody wrote a rule for.
+
+**`EventHistory`** — every event, in order. Append-only by
+construction, with one named method that shortens it, for rollback.
+
+**`World`** — the tick, the vocabulary, the entities, and the history.
+The whole thing.
+
+**`Rejection`** — why a proposal was refused. `Malformed` when the
+proposal is wrong on its own. `Contradiction` when the world is in the
+way.
+
+**`Briefing`** — what the crate hands SandMan. The entities that
+matter, as they are now, and a tail of recent events.
 
 **`FactVocabulary`** — every fact name one world knows, and the rules
 for each. `validate` refuses a name that is not in it. The same list
 goes into a director prompt, so the model chooses from a closed set.
 
 **`FactRules`** — the rules for one name. Is it a number or a flag.
-Does it name a second entity. How many links each side allows. An enum,
-so a rule that needs a target cannot be declared on a name that has
-none.
+Does it name a second entity. How many links each side allows. Which
+entity types are allowed on each end. An enum, so a rule that needs a
+target cannot be declared on a name that has none.
 
 **`Count`** — `One`, `Many`, or `AtMost(n)`. It caps each side of a
 link. `holders: One` means Ashford has one king. `targets: One` means
@@ -429,14 +761,15 @@ council, and the next city gets its own twelve.
 
 | Type | Lives in |
 |---|---|
-| `Event`, `FactStart`, `FactEnd` | the `EventLog` |
+| `Event`, `EventKind`, `EventHistory` | the history |
 | `Entity`, `Fact` | the state |
 | `FactVocabulary`, `FactRules` | the world, beside both |
-| `EntityId`, `EventId`, `Tick`, `TimeSpan`, `EntityType` | both |
+| `EntityId`, `EventId`, `Tick`, `TimeSpan`, `EntityType`, `Count` | both |
+| `Rejection`, `Briefing` | neither — they cross the boundary to SandMan |
 
 Nothing in the state is an event. A director hands back a PROPOSED
 event, so one exists in flight for a moment. Only an accepted one
-reaches the log.
+reaches the history.
 
 ## The names
 
@@ -447,7 +780,7 @@ Every gap is marked, and a gap is not a hint.
 /// A handle on one entity. Never reused: the history names the dead.
 struct EntityId(u32);
 
-/// The position of one event in the EventLog.
+/// The position of one event in the EventHistory.
 struct EventId(u64);
 
 /// One step of world time. As long as the game says.
@@ -464,10 +797,9 @@ struct Entity {
     id: EntityId,
     entity_type: EntityType,
     name: String,
-    /// Where it sits. One parent, never two. Not belonging.
-    location: Option<EntityId>,
     /// Started, and maybe ended. One span, ever.
     existence: TimeSpan,
+    /// Everything true of it right now, including where it sits.
     facts: Vec<Fact>,
 }
 
@@ -491,12 +823,47 @@ struct FactVocabulary(BTreeMap<String, FactRules>);
 /// The rules for one name. An enum, so nonsense cannot be declared.
 enum FactRules {
     Solo   { numeric: bool },
-    Linked { numeric: bool, holders: Count, targets: Count },
+    Linked {
+        numeric: bool,
+        holders: Count,
+        targets: Count,
+        /// holder type => the target types it allows. empty = any.
+        allowed: BTreeMap<EntityType, Vec<EntityType>>,
+    },
 }
 
 /// How many of something one rule allows.
 /// `One` is `AtMost(1)`, spelled for the reader.
 enum Count { One, Many, AtMost(u16) }
+
+/// One entry in the history.
+struct Event { id: EventId, tick: Tick, kind: EventKind }
+
+/// The five things that can happen.
+enum EventKind {
+    EntityCreated   { id: EntityId, entity_type: EntityType, name: String },
+    EntityDestroyed { id: EntityId },
+    FactStart  { entity: EntityId, name: String, value: Option<i64>, linked_to: Option<EntityId> },
+    FactUpdate { entity: EntityId, name: String, linked_to: Option<EntityId>, from: i64, to: i64 },
+    FactEnd    { entity: EntityId, name: String, linked_to: Option<EntityId> },
+}
+
+/// Append-only. `truncate` is the one way to shorten it, for rollback.
+struct EventHistory(Vec<Event>);
+
+/// The world. The state is built from the history by `apply`.
+struct World {
+    tick: Tick,
+    vocabulary: FactVocabulary,
+    entities: BTreeMap<EntityId, Entity>,
+    history: EventHistory,
+}
+
+/// Why a proposal was refused. Decision 38 holds the variants.
+enum Rejection { Malformed(Malformed), Contradiction(Contradiction) }
+
+/// What the crate hands SandMan. Two cuts: relevance, then recency.
+struct Briefing { entities: Vec<EntityId>, recent: Vec<EventId> }
 ```
 
 `existence` keeps its own name. It is a `TimeSpan`, and the word says
@@ -509,16 +876,11 @@ Not decided. Do not build these.
 - **One-of-a-kind solo facts.** Only one city is the capital. Decision
   25 caps each side of a LINK, and says nothing about a solo fact that
   only one entity in the world can hold. No consumer has asked.
-- **The rest of the event set.** Decision 20 names `FactStart` and
-  `FactEnd`. Founding an entity, ending one, and moving one all need
-  events too, and none of them is named yet.
-- **Is a value change one event or two?** The treasury goes from 4000
-  to 900. Two events — `FactEnd` then `FactStart` — and the log says
-  exactly what it did. One event — `FactStart` alone, and `apply`
-  ends any open fact of that name — and the log carries a hidden
-  side effect. I lean two.
+- **Type rules for a solo fact.** Decision 33 covers linked facts. A
+  solo fact has no equivalent, so nothing stops "the sword is burned"
+  from being "the faction is burned". No consumer has asked.
 - **Walking a fact backwards.** Decision 15 sends an ended fact out of
-  the state, so "who was king in year 30" scans the `EventLog`. The fix
+  the state, so "who was king in year 30" scans the `EventHistory`. The fix
   is a back-pointer on the EVENT, not on the fact:
 
   ```rust
@@ -531,7 +893,7 @@ Not decided. Do not build these.
   in the log, so it survives after the fact leaves the state. Do not
   build it until something is slow.
 - **Pruning and snapshots.** A world that runs for years grows an
-  `EventLog` that never stops. Dropping the old part needs a rolled-up
+  `EventHistory` that never stops. Dropping the old part needs a rolled-up
   state at the cut. Not decided, and not needed for a first world.
 
   Pruning breaks decision 16. A `Fact` holds `opened: EventId`, and a
@@ -543,8 +905,9 @@ Not decided. Do not build these.
   nothing knows when the famine started. A snapshot has to carry the
   ticks that the dropped events held, or facts have to gain a
   `since: Tick`.
-- **The shape of a rejection.** "In chain terms" says a rejection is
-  feedback, not a boolean. What that feedback holds is open.
+- **How a `Malformed` gets back into the prompt.** Decision 38 says it
+  means the prompt failed. Whether SandMan fixes the prompt by hand, or
+  feeds the rejection back as an example, is open.
 - **Does `replay` re-validate?** Two answers, both defensible. Trusting
   the log is fast, because every event in it passed `validate` once.
   Re-running `validate` catches a bug in `apply` and a log somebody
@@ -564,14 +927,65 @@ Not decided. Do not build these.
   client compare that number to find a disagreement at once. Cheap and
   liked, not decided. It demands one thing: serialization must be
   deterministic, so no floats and no unordered maps, ever.
-- **What `View` holds.** Decision 27 says the crate chooses and the
-  consumer words it. The shape of what comes back is open, and it is
-  the risky boundary: too little and a consumer reaches into the state
-  anyway, too much and it is the state with extra steps.
+- **How a `Briefing` chooses its entities.** Decision 41 names the two
+  cuts. The ranking that fills the first one is decision 28's salience,
+  and how it scores is open.
 - **How salience is scored.** Decision 28 says the inputs are facts.
   How they rank is open.
 - **The rules.** Question 4. Nothing is decided beyond what each
   decision above already forces.
+
+## Build order
+
+Five steps. Each one ends in something that compiles and has a test
+that would fail without it. Nothing in "Open" is built.
+
+**1. The types.** `time.rs`, `entity.rs`, `fact.rs`, `event.rs`. Data
+and serde only, plus `FactVocabulary` lookup. No `World` yet.
+
+- Every type round-trips through JSON.
+- A vocabulary returns the rules for a declared name, and nothing for
+  a name nobody declared.
+- `TimeSpan::holds_at` answers before, during, and after.
+
+**2. `apply` and `replay`.** `world.rs` and `EventHistory`. The five
+events fold into state. No validation — `apply` trusts what it is
+given.
+
+- The same history builds the same state, twice (decision 17).
+- A fact that ends leaves the state, and the history keeps it.
+- `FactUpdate` closes the old value and opens the new one.
+- An entity stays in the state after `EntityDestroyed`, with its
+  existence closed.
+
+**3. `located_in` and the containment queries.** The crate declares the
+name in every vocabulary. `contents`, `ancestry`, and the cycle walk.
+
+- A new vocabulary already holds `located_in`.
+- `contents(mill)` finds Ada. `ancestry(ada)` gives the mill, then
+  Ashford.
+- A move ends the old location and opens the new one.
+
+**4. `validate`.** `Malformed` and `Contradiction`, every variant. This
+is the biggest step and the one that earns the crate.
+
+- One test per variant, each proving the exact rejection.
+- A refusal carries every reason, not the first (decision 36).
+- Good events land while bad ones are refused, in one tick
+  (decision 37).
+- `FactUpdate` with a stale `from` is refused.
+- A cycle is refused.
+
+**5. `brief`.** The two cuts. Ranking waits on salience scoring, so
+step 5 takes the newest entities and the last N events, and the
+ranking slots in later.
+
+- A briefing holds the present of its entities and a tail of history.
+- A budget of 5 returns 5 entities.
+
+After step 5 the core is done. Then spec these four together, because
+they interlock: hash-linking, a state root, the back-pointer index, and
+salience scoring.
 
 ## Rules for this crate
 
