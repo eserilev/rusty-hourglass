@@ -987,6 +987,76 @@ After step 5 the core is done. Then spec these four together, because
 they interlock: hash-linking, a state root, the back-pointer index, and
 salience scoring.
 
+## Formal verification
+
+This crate is unusually easy to verify, and that is not luck. The
+spec bans I/O, floats, clocks, randomness, and unordered maps. So
+`apply` and `validate` are pure functions over closed enums, and
+purity is the precondition every formal tool demands.
+
+### The properties worth proving
+
+1. **Replay determinism (decision 17).** `replay(log)` gives one
+   state on any machine. Rust's type system gives most of it free:
+   a pure function with no interior mutability cannot vary. The
+   residual risks are a stray `HashMap` or a float. A clippy lint
+   ban closes both.
+2. **The inductive invariants.** This is the prize. The claim:
+   every state reachable through `validate` + `apply` keeps the
+   rules. Each rule is one theorem of one shape — if the invariant
+   holds in S, and `validate(S, e)` passes, then `apply(S, e)`
+   keeps it:
+   - No target has more holders than its `Count` limit.
+   - No holder has more targets than its `Count` limit.
+   - The `located_in` graph has no cycle.
+   - One open fact per (entity, name).
+   - Every `Fact.opened` points inside the history.
+   - `TimeSpan.from <= until`, and a dead entity gains no facts.
+   - Every link obeys the `allowed` type map.
+3. **Rollback correctness.** `truncate(i)` then `replay` equals
+   `replay` of the prefix. Near-free by construction, and it IS
+   the undo promise.
+4. **Rejection completeness (decision 36).** For each rule, when
+   an event breaks it, the rejection list contains it. This proves
+   "one retry fixes everything" is real.
+5. **The CAS rule (33½).** A stale `from` is always refused, and
+   an accepted update always lands `to`.
+
+Not verifiable: salience scoring, briefing relevance, and anything
+the director does. Those are quality judgments, not invariants.
+The hash-link and state-root items in "Open" are the opposite:
+once decided, each is a one-line theorem ("equal roots imply equal
+states"), and both pair with the determinism proof.
+
+### The tools, by cost
+
+Every tool that fits Rust or the spec, cheap first. The list holds
+the poor fits too, so nobody re-litigates them.
+
+| Tool | Cost | What it gives | Fit |
+|---|---|---|---|
+| proptest | hours | model-based tests: random valid logs, assert every invariant after replay | do this regardless; not formal, catches most bugs first |
+| quickcheck | hours | same idea as proptest | poor: weaker shrinking, no strategy composition; proptest covers it |
+| cargo-fuzz | hours | coverage-guided fuzzing of serde round-trips and `validate` on raw bytes | narrow: the crate parses nothing but JSON; one harness is enough |
+| Kani | days | bounded model checking of the REAL Rust code; a world of 3 entities, 2 names, logs of length 5, checked exhaustively | good: a genuine formal result; `String` and `BTreeMap` need small bounds |
+| TLA+ | days | model the SPEC, not the code: the five event kinds and `validate` as a state machine, TLC checks small instances | good: finds design holes before Rust exists |
+| Alloy | days | the relational rules alone: `Count`, the `allowed` map, cycles | good: this is Alloy's exact sweet spot |
+| MIRAI | days | abstract interpretation over MIR, tag analysis | poor: aimed at taint and panics, not at inductive invariants; project dormant |
+| Loom | days | exhaustive interleavings of concurrent code | no fit: the crate is single-threaded by design |
+| Prusti | weeks | deductive proofs via Viper annotations | weak: less active than Verus and Creusot, struggles with `String` |
+| Creusot | weeks | full deductive proofs of the invariants, unbounded, via Why3 | strong when needed; research-grade effort |
+| Verus | weeks | same class as Creusot, SMT-based, its own `Map`/`Seq` model types | strong when needed; the code ports into a dialect |
+| Coq / Lean / Isabelle | months | a hand-written model of the spec plus proofs, or extraction | overkill: the model drifts from the Rust unless someone maintains both |
+
+### The ladder
+
+1. proptest now.
+2. One Kani harness for the cardinality and cycle invariants next.
+3. TLA+ or Alloy when the ruleset grows past what a reviewer holds
+   in one head.
+4. Verus or Creusot only when the shared game-server world makes a
+   state divergence expensive.
+
 ## Rules for this crate
 
 1. Hourglass depends on nothing in `server/`.
