@@ -2,6 +2,21 @@
 
 A world that remembers. 
 
+Status: THE CRATE IS BUILT. `crates/hourglass` holds all five
+build steps: the types, `apply` and `replay`, `located_in` with
+the containment queries, `validate` with every rejection, and
+`brief`. It holds two parts more, because the first consumer
+asked for them: the memory of a run (`memory.rs`) and the schema
+that grows (`migrate.rs`). A `verify` referee folds the history a
+second time and checks twelve invariants. Sixty tests pass, and
+ten Kani harnesses prove the merge laws, the direction law, and
+the band laws. No consumer calls the crate yet, and the server
+does not depend on it.
+
+The build went past the decisions below in eleven places. The
+section "Built past the decisions" names each one. Read that
+section before the code, and reject what you do not want.
+
 ## What it is for
 
 A world holds entities i.e. people, places, and things. Facts change that world
@@ -1056,6 +1071,92 @@ the poor fits too, so nobody re-litigates them.
    in one head.
 4. Verus or Creusot only when the shared game-server world makes a
    state divergence expensive.
+
+## Built past the decisions
+
+Each item below is code that the decisions above do not hold. The
+first consumer forced most of them: the memory of a roguelike
+between runs, on the `Game.progress` save path.
+
+1. **`Solo { numeric: bool }` became `Solo(Shape)`.** A bool says
+   that a name takes a number. It says nothing about WHICH
+   numbers, or WHICH WAY they move. `Shape` is the same enum
+   argument as decision 23, one level down:
+
+   ```rust
+   enum Shape {
+       Flag   { direction: Direction },
+       Number { band: Band, direction: Direction },
+   }
+   ```
+
+   A band on a flag is nonsense, so a flag cannot declare one.
+   `Linked` takes a `Shape` too, in place of its `numeric` bool.
+2. **A band caps every number.** `Band { min, max }`, closed at
+   both ends. A number outside it is `Malformed::OutOfBand`.
+3. **A direction is a law.** `Up`, `Down`, or `Free`. A best
+   depth never falls. An unlock never ends. The direction rules
+   the life of the fact as well as its number, because ending an
+   `Up` fact loses what it remembers.
+4. **A memory record, and a merge with five laws.** `Record` is
+   the flat cut of one entity: its solo facts, in the JSON shape
+   the player scope already stores. `merge` joins two records. It
+   is commutative, associative, and idempotent, an empty record
+   is its start, and it never moves a field backward. The five
+   hold because the join of one field starts from ABSENT, which
+   is why the crate needs no default for a new name.
+5. **A schema that grows.** `migrate` runs three laws: additive
+   only, the rules of a declared name never change, and the
+   version steps by one. So `FactVocabulary` carries a version.
+
+   Law two is not taste. `apply` reads the count on the target
+   side when it folds a `FactStart`. Change that count, and an
+   old history folds into a NEW state. A widened band is the one
+   safe change, because `apply` never reads a band.
+6. **`FactStart` closes one slot, and a slot is a name and a
+   target together.** Decision 25 says one open fact per entity
+   and name. That cannot hold for `hates` with `targets: Many`.
+   The crate closes the exact slot, and it closes a whole name
+   only when the count on the target side is exactly ONE. Then
+   there is one fact to close and no choice about which, which is
+   the move of decision 32. A count of twelve leaves a choice, so
+   the crate refuses with `TooManyTargets` and guesses nothing.
+
+   The holder side never closes anything. Ending the crown of Ada
+   is a change to ANOTHER entity, and one event names one
+   subject.
+7. **Six rejections more, in each half.** `Malformed` gained
+   `OutOfBand`, `Backward`, `UnnamedEntity`, `Unmergeable`, and
+   `BrokenVocabulary`. `Contradiction` gained `IdInUse`,
+   `NoSuchFact`, `Stale`, `Backward`, `TimeMovedBack`,
+   `NoMigrationPath`, and `VersionStep`. Decision 33 and a half
+   asks for the stale check and names no variant, so `Stale` is
+   that one.
+8. **A tick never moves back.** The history is ordered, so
+   `validate` refuses an event before the tick of the world.
+9. **A `TimeSpan` holds its start and not its end.** An entity
+   that dies at tick 50 is alive at 49 and gone at 50.
+10. **A link points at the dead. A holder must be alive.**
+    Decision 9 says a grudge outlives the person, so a new
+    `hates` reaches a dead Ada. The invariant "a dead entity
+    gains no facts" covers the holder alone. A `FactEnd` on a
+    dead entity passes, because a crown does not outlive the
+    king.
+11. **A `Faction` sits in a `Place`.** Decision 33 shows three
+    lines of the `located_in` type map, and a faction is in none
+    of them. Without a line, a faction has no place at all.
+
+Three answers to the "Open" list came out of the build, and each
+one is small enough to reverse:
+
+- **`replay` does not validate again.** The history is trusted.
+  The migration laws hold the other half: the rules of a declared
+  name never change, so an old history always folds the same way.
+- **A briefing takes the subject first, then the newest.**
+  Salience scoring is still open, and no caller changes when it
+  lands.
+- **A rejection carries no prose.** `Display` writes a default
+  line, and a consumer words it again.
 
 ## Rules for this crate
 
