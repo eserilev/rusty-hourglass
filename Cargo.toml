@@ -1,16 +1,16 @@
 [package]
 name = "hourglass"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "A world that remembers: an append-only history, a derived state, and rules a model cannot break."
-license = "MIT"
+license.workspace = true
 
 [lib]
 crate-type = ["lib"]
 
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ["cfg(kani)"] }
+[lints]
+workspace = true
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde.workspace = true
+serde_json.workspace = true

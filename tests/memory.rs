@@ -142,8 +142,14 @@ fn a_flag_that_is_false_says_what_an_empty_record_says() {
     let got: Record = serde_json::from_str(r#"{"unlocked_bow":false}"#).expect("it reads back");
     assert!(!got.flag("unlocked_bow"));
     assert!(got.get("unlocked_bow").is_none());
+    // The read drops the false flag, so the record IS the empty
+    // record, and the self-merge law holds on it.
+    assert_eq!(got, Record::new());
+    assert!(got.is_empty());
+    assert_eq!(serde_json::to_string(&got).unwrap(), "{}");
     let merged = merge(&schema(1), &got, &Record::new()).expect("it merges");
     assert!(merged.is_empty());
+    assert_eq!(merge(&schema(1), &got, &got).unwrap(), got);
 }
 
 // ---------------------------------------------------------------

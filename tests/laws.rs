@@ -73,9 +73,14 @@ fn draw(rng: &mut Lcg) -> Record {
         }
     }
     for name in FLAGS {
-        if rng.below(2) == 0 {
-            out.set(name, Value::Flag(true));
-        }
+        // One third true, one third absent, one third written false.
+        // A false flag leaves the record on write, so the sweep
+        // sees the one-shape law from the write side too.
+        match rng.below(3) {
+            0 => out.set(name, Value::Flag(true)),
+            1 => out.set(name, Value::Flag(false)),
+            _ => &mut out,
+        };
     }
     out
 }

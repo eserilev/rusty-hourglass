@@ -9,9 +9,12 @@ the containment queries, `validate` with every rejection, and
 asked for them: the memory of a run (`memory.rs`) and the schema
 that grows (`migrate.rs`). A `verify` referee folds the history a
 second time and checks twelve invariants. Sixty tests pass, and
-ten Kani harnesses prove the merge laws, the direction law, and
-the band laws. No consumer calls the crate yet, and the server
-does not depend on it.
+ten Kani harnesses prove the join laws per value, the direction
+law, and the band laws. `merge` applies the join name by name;
+the three record laws (same either way, same grouping, self-merge
+is identity) ride the seeded sweep against a naive oracle, not a
+harness. No consumer calls the crate yet, and the server does not
+depend on it.
 
 The build went past the decisions below in eleven places. The
 section "Built past the decisions" names each one. Read that

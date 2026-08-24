@@ -73,9 +73,27 @@ impl Value {
 }
 
 /// What one device remembers between runs.
+///
+/// One record has one shape: a flag that is false never sits in
+/// the map. `set` keeps that on write, and the read from JSON
+/// keeps it on the way in, so a record from the platform store and
+/// the same record built in code are equal, and `merge(r, r) == r`
+/// holds for every input.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
+#[serde(from = "BTreeMap<String, Value>", into = "BTreeMap<String, Value>")]
 pub struct Record(BTreeMap<String, Value>);
+
+impl From<BTreeMap<String, Value>> for Record {
+    fn from(map: BTreeMap<String, Value>) -> Self {
+        Record(map.into_iter().filter(|(_, v)| v.present()).collect())
+    }
+}
+
+impl From<Record> for BTreeMap<String, Value> {
+    fn from(record: Record) -> Self {
+        record.0
+    }
+}
 
 impl Record {
     pub fn new() -> Self {

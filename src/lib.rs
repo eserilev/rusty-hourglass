@@ -61,8 +61,13 @@
 //!
 //! [`Record`] is the first consumer: what one device remembers
 //! between runs. A best depth that never falls, unlocks that are
-//! never lost, and a merge of two devices with three laws proved
-//! ([`merge`]). See the [`memory`] module.
+//! never lost, and a merge of two devices ([`merge`]). The Kani
+//! harnesses prove the join laws per value: the larger number,
+//! the band, the direction, the count, and the span. `merge`
+//! applies that join name by name, and the seeded sweep in
+//! `tests/laws.rs` checks the three record laws (same either
+//! way, same grouping, self-merge is identity) against a naive
+//! oracle. See the [`memory`] module.
 //!
 //! # Whole numbers, everywhere
 //!
