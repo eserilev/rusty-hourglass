@@ -1,4 +1,4 @@
-# hourglass
+# rusty-hourglass
 
 A world that remembers. The crate holds the memory record: a
 value, a declared merge direction, and a merge that always picks
@@ -26,8 +26,18 @@ The server half of the progress seam consumes the record set. The
 
 ## Testing
 
-`cargo test -p hourglass` — 60 tests. `cargo kani` inside the
-crate — ten proof harnesses.
+`cargo test` — 60 tests. `cargo kani` — ten proof harnesses.
 
-The truth about scope and status lives in the specs at the repo
-root; start at `spec/README.md`.
+## Use
+
+The package is `rusty-hourglass`. The library name is `hourglass`.
+Pin one commit until the API is stable:
+
+```toml
+[dependencies]
+rusty-hourglass = { git = "https://github.com/eserilev/rusty-hourglass", rev = "<commit>" }
+```
+
+Then write `use hourglass::*;` in the code.
+
+The truth about scope and status lives in `SPEC.md`.

@@ -1,16 +1,19 @@
 [package]
-name = "hourglass"
-version.workspace = true
-edition.workspace = true
+name = "rusty-hourglass"
+version = "0.1.0"
+edition = "2021"
 description = "A world that remembers: an append-only history, a derived state, and rules a model cannot break."
-license.workspace = true
+license = "MIT"
+repository = "https://github.com/eserilev/rusty-hourglass"
 
+# The library keeps the short name, so callers write `use hourglass::*`.
 [lib]
+name = "hourglass"
 crate-type = ["lib"]
 
-[lints]
-workspace = true
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(kani)"] }
 
 [dependencies]
-serde.workspace = true
-serde_json.workspace = true
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
