@@ -44,17 +44,20 @@ impl Band {
     }
 
     /// Is this number inside the band?
+    #[cfg_attr(charon, verify::start_from)]
     pub fn holds(&self, n: i64) -> bool {
         n >= self.min && n <= self.max
     }
 
     /// An empty band holds no number.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn empty(&self) -> bool {
         self.min > self.max
     }
 
     /// Pull a number into the band. A band with a top below its
     /// floor answers with the floor, so the function is total.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn clamp(&self, n: i64) -> i64 {
         if n < self.min {
             self.min
@@ -66,6 +69,7 @@ impl Band {
     }
 
     /// Does this band sit inside the other one?
+    #[cfg_attr(charon, verify::start_from)]
     pub fn inside(&self, other: &Band) -> bool {
         self.min >= other.min && self.max <= other.max
     }
@@ -95,6 +99,7 @@ pub enum Direction {
 
 impl Direction {
     /// Does a move from `from` to `to` obey the direction?
+    #[cfg_attr(charon, verify::start_from)]
     pub fn allows(&self, from: i64, to: i64) -> bool {
         match self {
             Direction::Up => to >= from,
@@ -106,6 +111,7 @@ impl Direction {
     /// Can a fact under this direction leave the state? An `Up`
     /// fact never ends, because ending it loses what it
     /// remembers. A `Down` fact ends, and that is the end of it.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn can_end(&self) -> bool {
         !matches!(self, Direction::Up)
     }
@@ -113,6 +119,7 @@ impl Direction {
     /// Can a fact under this direction start again after it
     /// ended? Only a free one. A `Down` flag has one life: a
     /// bridge burns once.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn can_restart(&self) -> bool {
         matches!(self, Direction::Free)
     }
@@ -156,6 +163,7 @@ impl Shape {
     }
 
     /// The same shape, with a direction.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn moving(self, direction: Direction) -> Shape {
         match self {
             Shape::Flag { .. } => Shape::Flag { direction },
@@ -163,6 +171,7 @@ impl Shape {
         }
     }
 
+    #[cfg_attr(charon, verify::start_from)]
     pub fn direction(&self) -> Direction {
         match self {
             Shape::Flag { direction } => *direction,
@@ -170,6 +179,7 @@ impl Shape {
         }
     }
 
+    #[cfg_attr(charon, verify::start_from)]
     pub fn band(&self) -> Option<Band> {
         match self {
             Shape::Flag { .. } => None,
@@ -177,6 +187,7 @@ impl Shape {
         }
     }
 
+    #[cfg_attr(charon, verify::start_from)]
     pub fn numeric(&self) -> bool {
         matches!(self, Shape::Number { .. })
     }
@@ -200,6 +211,7 @@ pub enum Count {
 
 impl Count {
     /// The cap, or nothing when the count is unlimited.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn limit(self) -> Option<u16> {
         match self {
             Count::One => Some(1),
@@ -211,6 +223,7 @@ impl Count {
     /// A cap of exactly one. A new fact of that name replaces the
     /// old one, because there is only one thing it can replace
     /// (spec decision 32, the move).
+    #[cfg_attr(charon, verify::start_from)]
     pub fn is_single(self) -> bool {
         self.limit() == Some(1)
     }

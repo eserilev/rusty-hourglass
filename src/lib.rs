@@ -1,4 +1,4 @@
-//! Hourglass: a world that remembers (crates/hourglass/SPEC.md).
+//! Hourglass: a world that remembers (SPEC.md).
 //!
 //! A world holds entities: people, places, things, and factions.
 //! Facts change that world over time, and the changes are
@@ -73,6 +73,11 @@
 //!
 //! No float enters the crate. Every law states as a theorem a
 //! solver can read.
+
+// Charon reads the `verify::start_from` marks when it translates the
+// crate to Lean (lean/extract.sh). The tool and the marks exist only
+// under `--cfg charon`, so a normal build never sees them.
+#![cfg_attr(charon, feature(register_tool), register_tool(verify))]
 
 mod brief;
 mod entity;

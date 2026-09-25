@@ -1,0 +1,14 @@
+name = "hourglass-proofs"
+defaultTargets = ["Hourglass"]
+
+# The Aeneas Lean library. Keep this rev equal to the Aeneas commit
+# that generated the files in Hourglass/, because the generated code
+# names the library by that version.
+[[require]]
+name = "aeneas"
+git = "https://github.com/AeneasVerif/aeneas.git"
+rev = "fd27c97d39108dd1c6b0cb46bbefd0b94a47b591"
+subDir = "backends/lean"
+
+[[lean_lib]]
+name = "Hourglass"

@@ -46,11 +46,13 @@ pub struct TimeSpan {
 
 impl TimeSpan {
     /// A span that started and has not ended.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn open(from: Tick) -> Self {
         TimeSpan { from, until: None }
     }
 
     /// A span that started and ended.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn closed(from: Tick, until: Tick) -> Self {
         TimeSpan {
             from,
@@ -59,6 +61,7 @@ impl TimeSpan {
     }
 
     /// Was this true at that tick?
+    #[cfg_attr(charon, verify::start_from)]
     pub fn holds_at(&self, at: Tick) -> bool {
         if at < self.from {
             return false;
@@ -70,11 +73,13 @@ impl TimeSpan {
     }
 
     /// Has the span ended?
+    #[cfg_attr(charon, verify::start_from)]
     pub fn ended(&self) -> bool {
         self.until.is_some()
     }
 
     /// A span never ends before it starts.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn sound(&self) -> bool {
         match self.until {
             None => true,

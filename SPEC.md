@@ -2,7 +2,7 @@
 
 A world that remembers. 
 
-Status: THE CRATE IS BUILT. `crates/hourglass` holds all five
+Status: THE CRATE IS BUILT. The crate holds all five
 build steps: the types, `apply` and `replay`, `located_in` with
 the containment queries, `validate` with every rejection, and
 `brief`. It holds two parts more, because the first consumer
@@ -13,8 +13,10 @@ ten Kani harnesses prove the join laws per value, the direction
 law, and the band laws. `merge` applies the join name by name;
 the three record laws (same either way, same grouping, self-merge
 is identity) ride the seeded sweep against a naive oracle, not a
-harness. No consumer calls the crate yet, and the server does not
-depend on it.
+harness. Aeneas translates the scalar core to Lean, and eleven
+Lean theorems prove the ten Kani laws plus panic freedom of the
+join, for every input with no bound (`lean/README.md`). No
+consumer calls the crate yet.
 
 The build went past the decisions below in eleven places. The
 section "Built past the decisions" names each one. Read that
@@ -1064,6 +1066,7 @@ the poor fits too, so nobody re-litigates them.
 | Prusti | weeks | deductive proofs via Viper annotations | weak: less active than Verus and Creusot, struggles with `String` |
 | Creusot | weeks | full deductive proofs of the invariants, unbounded, via Why3 | strong when needed; research-grade effort |
 | Verus | weeks | same class as Creusot, SMT-based, its own `Map`/`Seq` model types | strong when needed; the code ports into a dialect |
+| Aeneas | weeks | translates the REAL Rust code into pure Lean functions; the Lean proofs hold for every input, with no bound | strong: rung 1 is BUILT (`lean/README.md`); the Lean is generated, so it does not drift from the Rust |
 | Coq / Lean / Isabelle | months | a hand-written model of the spec plus proofs, or extraction | overkill: the model drifts from the Rust unless someone maintains both |
 
 ### The ladder
@@ -1074,6 +1077,10 @@ the poor fits too, so nobody re-litigates them.
    in one head.
 4. Verus or Creusot only when the shared game-server world makes a
    state divergence expensive.
+5. Aeneas, one rung at a time: the scalar core (BUILT), the record
+   merge behind a map wrapper, and then the world laws (replay,
+   rewind, and propose). `lean/README.md` holds the rungs and the
+   map of the code that does not translate yet.
 
 ## Built past the decisions
 

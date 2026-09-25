@@ -60,6 +60,7 @@ pub enum Value {
 impl Value {
     /// Does this value say anything? A flag that is false says
     /// the same as a name the record never carried.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn present(&self) -> bool {
         !matches!(self, Value::Flag(false))
     }
@@ -154,6 +155,7 @@ pub enum Join {
 
 impl Join {
     /// The join of two values. Both arrive present.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn of(&self, a: Value, b: Value) -> Value {
         match (self, a, b) {
             (Join::Larger, Value::Number(x), Value::Number(y)) => Value::Number(x.max(y)),

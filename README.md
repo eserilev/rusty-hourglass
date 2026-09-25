@@ -27,6 +27,8 @@ The server half of the progress seam consumes the record set. The
 ## Testing
 
 `cargo test` — 60 tests. `cargo kani` — ten proof harnesses.
+`lean/` — eleven Lean theorems about the Rust code, through Aeneas,
+with no bound. `lean/README.md` tells how to run them.
 
 ## Use
 
