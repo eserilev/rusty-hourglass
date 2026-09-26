@@ -208,6 +208,15 @@ def time.EntityId.Insts.CoreCmpPartialEqEntityId.ne (a b : time.EntityId) : Resu
 def ids.Ids.get {V : Type} (m : ids.Ids V) (id : time.EntityId) : Result (Option V) :=
   ok m[id.val]?
 
+/-- `Ids::ids` gives every id one time, in ascending order. The model
+    keys are numbers, and each key of an `Ids` map comes from an
+    `EntityId`, a `u32`. So the filter below keeps every key, and the
+    test `ids_follows_the_model` in `src/ids.rs` checks the order. -/
+def ids.Ids.ids {V : Type} (m : ids.Ids V) : Result (alloc.vec.Vec time.EntityId) :=
+  let l := (Std.ExtTreeMap.keys m).filterMap (fun k =>
+    if h : k < 2 ^ UScalarTy.U32.numBits then some (UScalar.ofNatCore k h) else none)
+  if h : l.length ≤ Usize.max then ok (alloc.vec.Vec.from l h) else fail .panic
+
 /-! ## The world queries of the gate, opaque on purpose
 
 `validate` translates in full, except these queries (the module
@@ -235,13 +244,6 @@ axiom validate.queries.cycle_through
 /-- [hourglass::validate::queries::type_faults]:
     Source: 'src/validate.rs', lines 376:4-386:5 -/
 axiom validate.queries.type_faults
-  :
-  world.World → time.EntityId → String → fact.FactRules → time.EntityId
-    → Result (alloc.vec.Vec reject.Rejection)
-
-/-- [hourglass::validate::queries::count_faults]:
-    Source: 'src/validate.rs', lines 389:4-399:5 -/
-axiom validate.queries.count_faults
   :
   world.World → time.EntityId → String → fact.FactRules → time.EntityId
     → Result (alloc.vec.Vec reject.Rejection)

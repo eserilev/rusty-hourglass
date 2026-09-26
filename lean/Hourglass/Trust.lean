@@ -6,6 +6,7 @@ import Hourglass.World
 import Hourglass.Apply
 import Hourglass.Gate
 import Hourglass.Direction
+import Hourglass.Counts
 
 open hourglass
 
@@ -81,10 +82,6 @@ open hourglass
 #guard_msgs in
 #print axioms mergeRec_fits
 
-
-/-! The rung 3 laws. The laws about `propose` hold for every answer of
-    the world queries of the gate, so their pins name those queries. -/
-
 /-- info: 'hourglass.replay_one_of_commit' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms replay_one_of_commit
@@ -101,7 +98,6 @@ open hourglass
  Classical.choice,
  Quot.sound,
  validate.queries.blank,
- validate.queries.count_faults,
  validate.queries.cycle_through,
  validate.queries.ended_before,
  validate.queries.is_located_in,
@@ -113,7 +109,6 @@ open hourglass
  Classical.choice,
  Quot.sound,
  validate.queries.blank,
- validate.queries.count_faults,
  validate.queries.cycle_through,
  validate.queries.ended_before,
  validate.queries.is_located_in,
@@ -125,15 +120,12 @@ open hourglass
  Classical.choice,
  Quot.sound,
  validate.queries.blank,
- validate.queries.count_faults,
  validate.queries.cycle_through,
  validate.queries.ended_before,
  validate.queries.is_located_in,
  validate.queries.type_faults] -/
 #guard_msgs in
 #print axioms reach_propose
-
-/-! The rung 4a laws: the rules inside `apply`. -/
 
 /-- info: 'hourglass.apply_one_fact_per_slot' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
@@ -159,13 +151,9 @@ open hourglass
 #guard_msgs in
 #print axioms every_world_one_target
 
-/-! The rung 4b laws: the rules inside `validate`. Each pin names the world
-    queries that the law reads, and no other axiom. -/
-
 /-- info: 'hourglass.start_clean' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.count_faults,
  validate.queries.cycle_through,
  validate.queries.ended_before,
  validate.queries.is_located_in,
@@ -181,7 +169,6 @@ open hourglass
  Classical.choice,
  Quot.sound,
  validate.queries.blank,
- validate.queries.count_faults,
  validate.queries.cycle_through,
  validate.queries.ended_before,
  validate.queries.is_located_in,
@@ -197,7 +184,6 @@ open hourglass
  Classical.choice,
  Quot.sound,
  validate.queries.blank,
- validate.queries.count_faults,
  validate.queries.cycle_through,
  validate.queries.ended_before,
  validate.queries.is_located_in,
@@ -209,7 +195,6 @@ open hourglass
  Classical.choice,
  Quot.sound,
  validate.queries.blank,
- validate.queries.count_faults,
  validate.queries.cycle_through,
  validate.queries.ended_before,
  validate.queries.is_located_in,
@@ -217,12 +202,9 @@ open hourglass
 #guard_msgs in
 #print axioms every_proposed_world_in_band
 
-/-! The rung 5 direction law. -/
-
 /-- info: 'hourglass.start_dir' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.count_faults,
  validate.queries.cycle_through,
  validate.queries.ended_before,
  validate.queries.is_located_in,
@@ -242,7 +224,6 @@ open hourglass
  Classical.choice,
  Quot.sound,
  validate.queries.blank,
- validate.queries.count_faults,
  validate.queries.cycle_through,
  validate.queries.ended_before,
  validate.queries.is_located_in,
@@ -258,7 +239,6 @@ open hourglass
  Classical.choice,
  Quot.sound,
  validate.queries.blank,
- validate.queries.count_faults,
  validate.queries.cycle_through,
  validate.queries.ended_before,
  validate.queries.is_located_in,
@@ -266,3 +246,40 @@ open hourglass
 #guard_msgs in
 #print axioms up_never_falls
 
+/-- info: 'hourglass.apply_all_facts' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms apply_all_facts
+
+/-- info: 'hourglass.apply_targets' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms apply_targets
+
+/-- info: 'hourglass.every_proposed_world_targets' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ validate.queries.blank,
+ validate.queries.cycle_through,
+ validate.queries.ended_before,
+ validate.queries.is_located_in,
+ validate.queries.type_faults] -/
+#guard_msgs in
+#print axioms every_proposed_world_targets
+
+/-- info: 'hourglass.apply_keyId' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms apply_keyId
+
+/-- info: 'hourglass.apply_holders' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms apply_holders
+
+/-- info: 'hourglass.every_proposed_world_holders' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ validate.queries.blank,
+ validate.queries.cycle_through,
+ validate.queries.ended_before,
+ validate.queries.is_located_in,
+ validate.queries.type_faults] -/
+#guard_msgs in
+#print axioms every_proposed_world_holders

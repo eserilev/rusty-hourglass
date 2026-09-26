@@ -3,8 +3,9 @@
 Aeneas translates the Rust code of the crate into pure Lean
 functions. The theorems in `Hourglass/Laws.lean`,
 `Hourglass/Merge.lean`, `Hourglass/World.lean`,
-`Hourglass/Apply.lean`, `Hourglass/Gate.lean`, and
-`Hourglass/Direction.lean` are about those functions. A theorem holds
+`Hourglass/Apply.lean`, `Hourglass/Gate.lean`,
+`Hourglass/Direction.lean`, and `Hourglass/Counts.lean` are about
+those functions. A theorem holds
 for every input, with no bound. Kani checks the rung 1 laws in
 `src/proofs.rs`, but only up to its bounds.
 
@@ -98,7 +99,7 @@ alone.
 
 `validate` translates in full, except the module `validate::queries`.
 Each query only reads the world and answers a value, for example a
-bool or the faults of the count check. No query touches the list of
+bool or the faults of the type check. No query touches the list of
 faults, and each fault only adds to the list. So "no fault at the
 end" means "no band fault", for every answer of the queries. The
 pins name the queries that each law reads.
@@ -115,6 +116,24 @@ pins name the queries that each law reads.
 The law covers every `Up` name that is not single-target. A
 single-target name moves its fact to a new target, so the fact
 leaves its old slot on purpose.
+
+## What is proved: rung 6, the count laws
+
+A linked name has two counts: the holders of one target, and the
+targets of one holder.
+
+| Theorem | The law |
+|---|---|
+| `every_proposed_world_holders` | In a world that proposals build from an empty world, a name with a limit of holders has at most that many holders of each target. |
+| `apply_holders` | One event with a clean holder check keeps that limit. |
+| `every_proposed_world_targets` | In a world that proposals build from an empty world, a name with a limit of targets above one holds at most that many facts on each entity. A fact carries a target exactly when its name takes one. |
+| `apply_targets` | One event with a clean target check keeps that limit. |
+| `apply_all_facts` | `apply` keeps each property that reads only the name and the target of a fact. |
+| `apply_keyId` | `apply` keeps the key of each entity equal to its id. The holder law needs this, because the gate counts the holders by id. |
+
+A limit of one target is the single-target law of rung 4a. The
+holder check and the target check compare `len >= limit`, with no
+add, so the Rust code has no overflow at the limit.
 
 ## What you trust
 
@@ -144,7 +163,7 @@ leaves its old slot on purpose.
 4. **The three standard axioms of Lean.** `Hourglass/Trust.lean`
    pins the axioms of each theorem with `#guard_msgs`. A `sorry` or
    a new axiom fails the build. The model files hold definitions
-   only, with one exception: the six world queries of the gate
+   only, with one exception: the five world queries of the gate
    (`validate::queries`). They are axioms with no body, and only the
    pins of the laws that read `validate` name them. An axiom that
    only names a function of an inhabited type cannot make the logic
@@ -236,9 +255,9 @@ the same order:
 1. The helpers take the name as `&String`, and the locals avoid the
    module names: the world is `w`, and the entity is `who`.
 2. The world queries moved into `validate::queries`. A query answers
-   a value and never receives the list of faults. `type_faults` and
-   `count_faults` answer their own list, and `push_all` adds it in the
-   same place as before.
+   a value and never receives the list of faults. `type_faults`
+   answers its own list, and `push_all` adds it in the same place as
+   before.
 3. `Ids::get` has a model.
 
 ### Rung 5: the world queries (the direction law is BUILT)
@@ -246,9 +265,15 @@ the same order:
 The slot queries `slot_value` and `held_for_start` now translate as
 index loops. So the direction law reads their real answers.
 
-What waits: no cycle in `located_in`, and the counts of holders and
-targets. These laws read the remaining queries, so those must
-translate first:
+### Rung 6: the count check (BUILT)
+
+The count check `counts_fit` translates. `holders_except` walks the
+ids of the world with `Ids::ids`, and `targets_except` walks the
+facts of the holder. Both are index loops. `Ids::ids` has a model and
+a proptest.
+
+What waits: no cycle in `located_in`. This law reads the remaining
+queries, so those must translate first:
 
 | Group | Where | The fix |
 |---|---|---|

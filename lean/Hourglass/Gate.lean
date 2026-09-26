@@ -95,6 +95,24 @@ theorem grows_bind {β : Type} {o : alloc.vec.Vec reject.Rejection} {m : Result 
 /-- Close a `Grows` goal through binds, branches, and pushes. It fails
     when it gets stuck, so a bind on a fresh list (for example the
     faults of a query) falls back to the plain bind rule. -/
+syntax "grows0" : tactic
+macro_rules
+  | `(tactic| grows0) => `(tactic| first
+    | (apply grows_ok; assumption)
+    | (apply grows_push; assumption)
+    | (apply grows_push_all; assumption)
+    | (apply grows_target_fits; assumption)
+    | (refine grows_bind_vec (by grows0) (fun _ _ => by grows0))
+    | (refine grows_bind (fun _ => by grows0))
+    | (split <;> grows0))
+
+theorem grows_counts_fit {o x : alloc.vec.Vec reject.Rejection} {w : World} {who : time.EntityId}
+    {n : String} {rules : FactRules} {t : time.EntityId} (h : o.val <+: x.val) :
+    Grows o (validate.counts_fit w who n rules t x) := by
+  unfold validate.counts_fit
+  grows0
+
+/-- `grows0`, and the count check of the gate. -/
 syntax "grows" : tactic
 macro_rules
   | `(tactic| grows) => `(tactic| first
@@ -102,6 +120,7 @@ macro_rules
     | (apply grows_push; assumption)
     | (apply grows_push_all; assumption)
     | (apply grows_target_fits; assumption)
+    | (apply grows_counts_fit; assumption)
     | (refine grows_bind_vec (by grows) (fun _ _ => by grows))
     | (refine grows_bind (fun _ => by grows))
     | (split <;> grows))

@@ -54,6 +54,11 @@ impl<V> Ids<V> {
         self.0.is_empty()
     }
 
+    /// Every id, one time each, in strictly ascending order.
+    pub(crate) fn ids(&self) -> Vec<EntityId> {
+        self.0.keys().copied().collect()
+    }
+
     /// The largest id, if the map holds one.
     pub(crate) fn last_id(&self) -> Option<EntityId> {
         self.0.keys().next_back().copied()
@@ -121,6 +126,9 @@ mod tests {
                 prop_assert_eq!(m.contains(EntityId(k)), want.is_some());
             }
             prop_assert_eq!(m.len(), model.len());
+            let mut want_ids: Vec<EntityId> = model.iter().map(|(k, _)| EntityId(*k)).collect();
+            want_ids.sort();
+            prop_assert_eq!(m.ids(), want_ids);
             prop_assert_eq!(m.last_id(), model.iter().map(|(k, _)| EntityId(*k)).max());
             let mut pairs = model.clone();
             pairs.sort_by_key(|(k, _)| *k);

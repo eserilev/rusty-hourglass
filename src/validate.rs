@@ -14,7 +14,7 @@
 //! can prevent. Ashford already has a king. Ada is dead.
 
 use crate::event::EventKind;
-use crate::fact::{Count, FactRules, FactVocabulary, Shape, LOCATED_IN};
+use crate::fact::{Count, Fact, FactRules, FactVocabulary, Shape, LOCATED_IN};
 use crate::reject::{Contradiction, Malformed, Rejection};
 use crate::time::{EntityId, Tick};
 use crate::world::{name_index, single_target, slot_index, World};
@@ -112,7 +112,7 @@ fn start(
         // 9). Only the HOLDER must be alive.
         if rules.takes_target() {
             push_all(out, &queries::type_faults(w, who, name, rules, target));
-            push_all(out, &queries::count_faults(w, who, name, rules, target));
+            counts_fit(w, who, name, rules, target, out);
         }
         if queries::is_located_in(name) {
             if let Some(through) = queries::cycle_through(w, who, target) {
@@ -398,7 +398,7 @@ fn target_fits(
 /// Lean proofs keep this module opaque, so a law about `validate`
 /// holds for every answer these queries give.
 mod queries {
-    use super::{counts_fit, types_fit};
+    use super::types_fit;
     use crate::fact::{FactRules, LOCATED_IN};
     use crate::reject::Rejection;
     use crate::time::EntityId;
@@ -433,19 +433,6 @@ mod queries {
     }
 
     #[allow(clippy::ptr_arg)]
-    pub(super) fn count_faults(
-        w: &World,
-        who: EntityId,
-        name: &String,
-        rules: &FactRules,
-        target: EntityId,
-    ) -> Vec<Rejection> {
-        let mut out = Vec::new();
-        counts_fit(w, who, name, rules, target, &mut out);
-        out
-    }
-
-    #[allow(clippy::ptr_arg)]
     pub(super) fn ended_before(w: &World, who: EntityId, name: &String) -> bool {
         w.ever_ended(who, name)
     }
@@ -471,31 +458,29 @@ fn types_fit(
     }
 }
 
+#[allow(clippy::ptr_arg)]
 fn counts_fit(
-    world: &World,
-    entity: EntityId,
-    name: &str,
+    w: &World,
+    who: EntityId,
+    name: &String,
     rules: &FactRules,
     target: EntityId,
     out: &mut Vec<Rejection>,
 ) {
-    let FactRules::Linked {
-        holders, targets, ..
-    } = rules
-    else {
-        return;
+    let (holders, targets) = match rules {
+        FactRules::Linked {
+            holders, targets, ..
+        } => (*holders, *targets),
+        FactRules::Solo(_) => return,
     };
     // The holder side never makes room. Ending the crown of Ada
     // is a change to ANOTHER entity, and this event names one.
     if let Some(limit) = holders.limit() {
-        let held_by: Vec<EntityId> = world
-            .holders_of(name, target)
-            .into_iter()
-            .filter(|id| *id != entity)
-            .collect();
-        if held_by.len() as u64 + 1 > u64::from(limit) {
+        let held_by = holders_except(w, name, target, who);
+        // One more holder does not fit: `len + 1 > limit`, with no add.
+        if held_by.len() >= usize::from(limit) {
             out.push(Rejection::Contradiction(Contradiction::TooManyHolders {
-                name: name.to_string(),
+                name: name.clone(),
                 target,
                 held_by,
                 limit,
@@ -506,21 +491,79 @@ fn counts_fit(
     // is exactly one: then there is one fact to close and no
     // choice about which (spec decision 32, the move).
     if let Some(limit) = targets.limit() {
-        if *targets == Count::One || limit == 1 {
+        if targets == Count::One || limit == 1 {
             return;
         }
-        let pointing_at: Vec<EntityId> = world
-            .targets_of(name, entity)
-            .into_iter()
-            .filter(|id| *id != target)
-            .collect();
-        if pointing_at.len() as u64 + 1 > u64::from(limit) {
+        let pointing_at = targets_except(w, who, name, target);
+        if pointing_at.len() >= usize::from(limit) {
             out.push(Rejection::Contradiction(Contradiction::TooManyTargets {
-                name: name.to_string(),
-                holder: entity,
+                name: name.clone(),
+                holder: who,
                 pointing_at,
                 limit,
             }));
+        }
+    }
+}
+
+/// The entities other than `who` that hold the name about the target,
+/// in ascending id order.
+#[allow(clippy::ptr_arg)]
+fn holders_except(w: &World, name: &String, target: EntityId, who: EntityId) -> Vec<EntityId> {
+    let ids = w.entity_ids();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < ids.len() {
+        push_holder(&mut out, w, ids[i], name, target, who);
+        i += 1;
+    }
+    out
+}
+
+/// One step of `holders_except`. A loop body of its own, because Aeneas
+/// stops on a branch inside a loop that holds a borrow.
+#[allow(clippy::ptr_arg)]
+fn push_holder(
+    out: &mut Vec<EntityId>,
+    w: &World,
+    id: EntityId,
+    name: &String,
+    target: EntityId,
+    who: EntityId,
+) {
+    if let Some(row) = w.entity(id) {
+        if row.id != who && slot_index(&row.facts, name, Some(target)).is_some() {
+            out.push(row.id);
+        }
+    }
+}
+
+/// The targets other than `target` that `who` holds the name about, in
+/// the order of its facts.
+#[allow(clippy::ptr_arg)]
+fn targets_except(w: &World, who: EntityId, name: &String, target: EntityId) -> Vec<EntityId> {
+    let mut out = Vec::new();
+    let row = match w.entity(who) {
+        Some(row) => row,
+        None => return out,
+    };
+    let mut i = 0;
+    while i < row.facts.len() {
+        push_other_target(&mut out, &row.facts[i], name, target);
+        i += 1;
+    }
+    out
+}
+
+/// One step of `targets_except`, a loop body of its own for the same
+/// reason as `push_holder`.
+#[allow(clippy::ptr_arg)]
+fn push_other_target(out: &mut Vec<EntityId>, f: &Fact, name: &String, target: EntityId) {
+    if f.name == *name {
+        if let Some(t) = f.linked_to {
+            if t != target {
+                out.push(t);
+            }
         }
     }
 }

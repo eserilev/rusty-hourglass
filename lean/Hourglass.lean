@@ -6,4 +6,5 @@ import Hourglass.World
 import Hourglass.Apply
 import Hourglass.Gate
 import Hourglass.Direction
+import Hourglass.Counts
 import Hourglass.Trust

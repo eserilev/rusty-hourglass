@@ -91,6 +91,11 @@ impl World {
         self.entities.is_empty()
     }
 
+    /// The ids of every entity, in ascending order.
+    pub(crate) fn entity_ids(&self) -> Vec<EntityId> {
+        self.entities.ids()
+    }
+
     pub fn history(&self) -> &EventHistory {
         &self.history
     }
