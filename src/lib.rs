@@ -84,6 +84,7 @@ mod brief;
 mod entity;
 mod event;
 mod fact;
+mod ids;
 mod memory;
 mod migrate;
 mod names;

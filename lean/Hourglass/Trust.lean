@@ -3,6 +3,7 @@
 import Hourglass.Laws
 import Hourglass.Merge
 import Hourglass.World
+import Hourglass.Apply
 
 open hourglass
 
@@ -79,34 +80,57 @@ open hourglass
 #print axioms mergeRec_fits
 
 
-/-! The rung 3 laws hold for every `apply` and every `validate`. So each
-    pin names those two opaque crate functions, and no other axiom. -/
+/-! The rung 3 laws. The laws about `propose` hold for every `validate`,
+    so their pins name that one opaque crate function. -/
 
-/-- info: 'hourglass.replay_one_of_commit' depends on axioms: [propext, Classical.choice, Quot.sound, world.World.apply] -/
+/-- info: 'hourglass.replay_one_of_commit' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms replay_one_of_commit
 
-/-- info: 'hourglass.replay_is_the_world' depends on axioms: [propext, Classical.choice, Quot.sound, world.World.apply] -/
+/-- info: 'hourglass.replay_is_the_world' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms replay_is_the_world
 
-/-- info: 'hourglass.rewind_is_exact' depends on axioms: [propext, Classical.choice, Quot.sound, world.World.apply] -/
+/-- info: 'hourglass.rewind_is_exact' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms rewind_is_exact
 
-/-- info: 'hourglass.propose_ok' depends on axioms: [propext, Classical.choice, Quot.sound, validate.validate, world.World.apply] -/
+/-- info: 'hourglass.propose_ok' depends on axioms: [propext, Classical.choice, Quot.sound, validate.validate] -/
 #guard_msgs in
 #print axioms propose_ok
 
-/-- info: 'hourglass.propose_err' depends on axioms: [propext, Classical.choice, Quot.sound, validate.validate, world.World.apply] -/
+/-- info: 'hourglass.propose_err' depends on axioms: [propext, Classical.choice, Quot.sound, validate.validate] -/
 #guard_msgs in
 #print axioms propose_err
 
-/-- info: 'hourglass.reach_propose' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- validate.validate,
- world.World.apply] -/
+/-- info: 'hourglass.reach_propose' depends on axioms: [propext, Classical.choice, Quot.sound, validate.validate] -/
 #guard_msgs in
 #print axioms reach_propose
+
+
+/-! The rung 4a laws: the rules inside `apply`. -/
+
+/-- info: 'hourglass.apply_one_fact_per_slot' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms apply_one_fact_per_slot
+
+/-- info: 'hourglass.apply_keeps_ids' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms apply_keeps_ids
+
+/-- info: 'hourglass.apply_one_target' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms apply_one_target
+
+/-- info: 'hourglass.every_world_one_fact_per_slot' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms every_world_one_fact_per_slot
+
+/-- info: 'hourglass.entities_never_vanish' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms entities_never_vanish
+
+/-- info: 'hourglass.every_world_one_target' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms every_world_one_target
 

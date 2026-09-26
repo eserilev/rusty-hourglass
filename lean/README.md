@@ -2,8 +2,8 @@
 
 Aeneas translates the Rust code of the crate into pure Lean
 functions. The theorems in `Hourglass/Laws.lean`,
-`Hourglass/Merge.lean`, and `Hourglass/World.lean` are about those
-functions. A theorem holds
+`Hourglass/Merge.lean`, `Hourglass/World.lean`, and
+`Hourglass/Apply.lean` are about those functions. A theorem holds
 for every input, with no bound. Kani checks the rung 1 laws in
 `src/proofs.rs`, but only up to its bounds.
 
@@ -67,12 +67,25 @@ The laws have three conditions:
 | `reach_propose` | So a world that any mix of proposals and commits built also replays exactly. |
 | `replay_one_of_commit` | One step of replay on the event of a commit gives the world of that commit. |
 
-These laws hold for every `apply` and every `validate`. They are
-about the discipline of the history, not about the rules inside
-`apply` and `validate`. So those two functions stay opaque: Aeneas
-sees only their types. `apply` receives only the entity map and the
-vocabulary, so it cannot touch the history or the tick. The laws
-rest on that signature.
+The laws about `propose` hold for every `validate`: they are about
+the discipline of the history, not about the rules inside `validate`.
+So `validate` stays opaque, and Aeneas sees only its type. `apply`
+receives only the entity map and the vocabulary, so it cannot touch
+the history or the tick.
+
+## What is proved: rung 4a, the rules inside `apply`
+
+| Theorem | The law |
+|---|---|
+| `apply_one_fact_per_slot` | If no entity holds two facts in one slot, then after `apply` still none does. A slot is a name and a target. |
+| `apply_one_target` | If each name that allows one target at a time holds at most one fact on each entity, then after `apply` this still holds. |
+| `apply_keeps_ids` | `apply` never removes an entity. A destroyed entity stays, with its span closed. |
+| `every_world_one_fact_per_slot` | So no world that commits and proposals build from an empty world holds two facts in one slot. |
+| `every_world_one_target` | So in every such world, an entity holds at most one fact of a single-target name. For example, it sits in one place at a time. |
+| `entities_never_vanish` | An entity of a world stays in every world that later commits and proposals build from it. |
+
+These laws hold with or without `validate`. They are about `apply`
+alone.
 
 ## What you trust
 
@@ -85,23 +98,27 @@ rest on that signature.
    - `Option` equality and clone, `<`, `>=`, and `>` on `Tick`,
      `String::clone`, `Vec::is_empty`, `Vec::truncate`,
      `Vec::default`, and `std::mem::take`.
-   - The map inside `FactRules` and the entity map of the world. No
-     law reads them, so their model is a plain list.
+   - `String` equality and `Vec::remove`.
+   - The map inside `FactRules`. No law reads it, so its model is a
+     plain list.
+   - `Ids<V>` (`src/ids.rs`), the entity map of the world. Its model
+     is `Std.ExtTreeMap Nat V compare`, keyed by the number of the
+     id.
    - `Names<V>` (`src/names.rs`), the one map with a name for its
      key. Its model is `Std.ExtTreeMap String V compare`, the
      verified tree map of the Lean standard library. Each operation
      is the `ExtTreeMap` operation of the same name.
-3. **The contract tests of the map.** The tests in `src/names.rs`
-   check the laws of the map model against the real `BTreeMap` on
-   random input. One test checks that Rust and Lean order strings
-   the same way.
+3. **The contract tests of the maps.** The tests in `src/names.rs`
+   and `src/ids.rs` check the laws of each map model. They run
+   against the real `BTreeMap` on random input. One test checks that Rust and
+   Lean order strings the same way.
 4. **The three standard axioms of Lean.** `Hourglass/Trust.lean`
    pins the axioms of each theorem with `#guard_msgs`. A `sorry` or
    a new axiom fails the build. The model files hold definitions
-   only, with two exceptions: the crate functions `apply` and
-   `validate`. They are axioms with no body, and only the rung 3
-   pins name them. An axiom that only names a function of an
-   inhabited type cannot make the logic inconsistent.
+   only, with one exception: the crate function `validate`. It is an
+   axiom with no body, and only the pins of the `propose` laws name
+   it. An axiom that only names a function of an inhabited type
+   cannot make the logic inconsistent.
 
 ## How to run
 
@@ -171,24 +188,30 @@ Two Rust changes made the laws possible:
    name for the local `event` and the module `event`. The Lean then
    breaks. `commit` and `replay` use `ev` and `out`.
 
-### Rung 4: the rules inside `apply` and `validate`
+### Rung 4a: the rules inside `apply` (BUILT)
 
-For example: one fact per slot, no cycle in `located_in`, and every
-event in a history passes `validate` at its time. These laws read
-the bodies of `apply` and `validate`, so the code needs changes
-first. A full run of the crate shows five groups of code that Aeneas
-does not translate yet:
+`apply` now translates in full. Three Rust changes made that
+possible, with the same behavior:
+
+1. The entity map is `Ids<V>`, a wrapper like `Names`.
+2. `retain` is an index loop with `Vec::remove`, which keeps the
+   order and copies nothing. `iter_mut().find` is an index loop.
+3. `get_mut` is `take`, a change, and `insert`.
+
+### Rung 4b: the rules inside `validate`
+
+For example: no cycle in `located_in`, and every event in a history
+passes `validate` at its time. These laws read the body of
+`validate`, so the code needs changes first. A full run of the crate
+shows these groups of code that Aeneas does not translate yet:
 
 | Group | Where | The fix |
 |---|---|---|
 | A `&'static str` label, and the text of a rejection | `EntityType::label`, `EventKind` label, `Direction::label`, `Shape::label`, `reject.rs` lines 221 and 326 | None. These are text, and no law reads them. Keep them out of the marks. |
-| An iterator chain with a closure | `Entity::fact`, `Entity::location`, `World::contents`, `holders_of`, `targets_of`, `facts_linked_to`, `apply`, `memory_names` | Write each one as an explicit loop over the wrapper walk. |
+| An iterator chain with a closure | `Entity::fact`, `Entity::location`, `World::contents`, `holders_of`, `targets_of`, `facts_linked_to`, `memory_names` | Write each one as an explicit loop over the wrapper walk. |
 | A closure that captures `&mut self` | `World::propose_all` | A loop that calls `propose`. |
 | A return inside a nested loop | `verify::same_state`, `verify::sound` | Move the inner loop into a helper function that returns a flag. |
 | A borrow shape that Aeneas does not support yet | `validate.rs` lines 96 to 112, 131, 132, 215, and 422 to 449; `memory::writes` | Read each one. Most are a `&mut` borrow held across a call. |
-
-The entity map also needs a wrapper like `Names`, keyed by
-`EntityId`.
 
 ## Known Aeneas limits
 

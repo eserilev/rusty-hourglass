@@ -152,13 +152,52 @@ def alloc.collections.btree.map.BTreeMap.Insts.CoreCloneClone.clone
   Result (alloc.collections.btree.map.BTreeMap K V A) :=
   ok m
 
-/-! ## Two crate functions, opaque on purpose
+/-- `String == String` compares the contents. -/
+@[rust_fun
+  "alloc::string::{core::cmp::PartialEq<alloc::string::String, alloc::string::String>}::eq"]
+def alloc.string.String.Insts.CoreCmpPartialEqString.eq (a b : String) : Result Bool :=
+  ok (decide (a = b))
 
-The rung 3 laws (World.lean) hold for every `apply` and every
-`validate`. So these two stay axioms: functions with no body. Each
-one only names a function of the right type, and every such type
-holds a function, so the two axioms cannot make the logic
-inconsistent. Trust.lean pins exactly which laws use them. -/
+/-- `Vec::remove(i)` takes the item at `i` out and shifts the rest
+    left. It panics when `i` is not below the length. -/
+@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::remove"]
+def alloc.vec.Vec.remove {T : Type} (_A : Type) (v : alloc.vec.Vec T) (i : Std.Usize) :
+    Result (T × alloc.vec.Vec T) :=
+  if h : i.val < v.val.length then
+    ok (v.val[i.val], alloc.vec.Vec.from (v.val.eraseIdx i.val)
+      (by have := v.property; simp only [List.length_eraseIdx, h, if_true]; omega))
+  else fail .panic
+
+/-! ## `Ids<V>`, the map from an entity id to a value
+
+Each operation is the `ExtTreeMap` operation of the same name, at the
+number of the id (see TypesExternal.lean). The tests in `src/ids.rs`
+check the laws of each one against the Rust code. -/
+
+/-- `Ids::new` is the empty map. -/
+def ids.Ids.new (V : Type) : Result (ids.Ids V) :=
+  ok ∅
+
+/-- `Ids::contains` says whether the map holds the id. -/
+def ids.Ids.contains {V : Type} (m : ids.Ids V) (id : time.EntityId) : Result Bool :=
+  ok (Std.ExtTreeMap.contains m id.val)
+
+/-- `Ids::insert` adds the id, or replaces its value. -/
+def ids.Ids.insert {V : Type} (m : ids.Ids V) (id : time.EntityId) (v : V) :
+    Result (ids.Ids V) :=
+  ok (Std.ExtTreeMap.insert m id.val v)
+
+/-- `Ids::take` gives the value of the id and takes it out. -/
+def ids.Ids.take {V : Type} (m : ids.Ids V) (id : time.EntityId) :
+    Result (Option V × ids.Ids V) :=
+  ok (m[id.val]?, Std.ExtTreeMap.erase m id.val)
+
+/-! ## One crate function, opaque on purpose
+
+The laws hold for every `validate` (World.lean). So it stays an
+axiom: a function with no body. The axiom only names a function of an
+inhabited type, so it cannot make the logic inconsistent. Trust.lean
+pins exactly which laws use it. -/
 
 /-- [hourglass::validate::validate]:
     Source: 'src/validate.rs', lines 24:0-71:1
@@ -167,11 +206,3 @@ axiom validate.validate
   :
   world.World → time.Tick → event.EventKind → Result (alloc.vec.Vec
     reject.Rejection)
-
-/-- [hourglass::world::{hourglass::world::World}::apply]:
-    Source: 'src/world.rs', lines 161:4-236:5 -/
-axiom world.World.apply
-  :
-  alloc.collections.btree.map.BTreeMap time.EntityId entity.Entity Global →
-    fact.FactVocabulary → event.Event → Result
-    (alloc.collections.btree.map.BTreeMap time.EntityId entity.Entity Global)

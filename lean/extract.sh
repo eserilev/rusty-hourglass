@@ -33,9 +33,9 @@ args+=(
   # The name map is a model in Lean (Hourglass/TypesExternal.lean), so
   # Aeneas sees only the signatures of its operations.
   --opaque 'hourglass::names'
-  # The rung 3 laws hold for every `apply` and every `validate`, so
-  # Aeneas sees only their signatures.
-  --opaque 'hourglass::world::_::apply'
+  # The entity map is a model too (Hourglass/TypesExternal.lean).
+  --opaque 'hourglass::ids'
+  # The laws hold for every `validate`, so Aeneas sees only its type.
   --opaque 'hourglass::validate::validate'
 )
 

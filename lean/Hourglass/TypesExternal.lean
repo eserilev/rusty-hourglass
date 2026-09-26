@@ -32,3 +32,13 @@ def alloc.collections.btree.map.BTreeMap (K : Type) (V : Type) (_A : Type) : Typ
        orders agree. A test in `src/names.rs` checks this on random
        strings. -/
 abbrev names.Names (V : Type) : Type := Std.ExtTreeMap String V compare
+
+/-- `Ids<V>` in `src/ids.rs`: a `BTreeMap<EntityId, V>`.
+
+    The model is the verified tree map of the Lean standard library,
+    keyed by the number of the id. An `EntityId` is a `u32`, and the
+    number of a `u32` keeps both its identity and its order, so the
+    model orders the ids as Rust does. The tests in `src/ids.rs`
+    check the laws of the model against the Rust code. -/
+abbrev ids.Ids (V : Type) : Type := Std.ExtTreeMap Nat V compare
+

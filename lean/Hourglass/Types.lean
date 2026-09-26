@@ -304,13 +304,12 @@ inductive reject.Rejection where
 | Contradiction : reject.Contradiction → reject.Rejection
 
 /-- [hourglass::world::World]
-    Source: 'src/world.rs', lines 58:0-63:1
+    Source: 'src/world.rs', lines 59:0-64:1
     Visibility: public -/
 structure world.World where
   tick : time.Tick
   vocabulary : fact.FactVocabulary
-  entities : alloc.collections.btree.map.BTreeMap time.EntityId entity.Entity
-    Global
+  entities : ids.Ids entity.Entity
   history : event.EventHistory
 
 end hourglass

@@ -41,11 +41,12 @@ use crate::brief::{Briefing, Budget};
 use crate::entity::{Entity, EntityType};
 use crate::event::{Event, EventHistory, EventKind};
 use crate::fact::{Count, Fact, FactRules, FactVocabulary, LOCATED_IN};
+use crate::ids::Ids;
 use crate::reject::Rejection;
-use crate::time::{EntityId, EventId, Tick};
+use crate::time::{EntityId, EventId, Tick, TimeSpan};
 use crate::validate;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 /// The hop cap of a walk up the location chain. A sound world
 /// never reaches it, because `validate` refuses a cycle. A world
@@ -58,7 +59,7 @@ pub const MAX_HOPS: usize = 1024;
 pub struct World {
     pub tick: Tick,
     pub vocabulary: FactVocabulary,
-    entities: BTreeMap<EntityId, Entity>,
+    entities: Ids<Entity>,
     history: EventHistory,
 }
 
@@ -68,13 +69,13 @@ impl World {
         World {
             tick: Tick(0),
             vocabulary,
-            entities: BTreeMap::new(),
+            entities: Ids::new(),
             history: EventHistory::new(),
         }
     }
 
     pub fn entity(&self, id: EntityId) -> Option<&Entity> {
-        self.entities.get(&id)
+        self.entities.get(id)
     }
 
     /// Every entity, in one order on every machine.
@@ -97,13 +98,7 @@ impl World {
     /// The handle the next `EntityCreated` takes. An id is never
     /// reused, so the count only rises.
     pub fn next_entity_id(&self) -> EntityId {
-        EntityId(
-            self.entities
-                .keys()
-                .next_back()
-                .map(|k| k.0 + 1)
-                .unwrap_or(0),
-        )
+        EntityId(self.entities.last_id().map(|k| k.0 + 1).unwrap_or(0))
     }
 
     // -----------------------------------------------------------
@@ -160,78 +155,89 @@ impl World {
     /// tick stay with the caller. The Lean proofs of replay and
     /// rewind rest on that: they hold for every `apply` with this
     /// signature.
-    fn apply(
-        entities: &mut BTreeMap<EntityId, Entity>,
-        vocabulary: &FactVocabulary,
-        event: &Event,
-    ) {
-        match &event.kind {
+    #[cfg_attr(charon, verify::start_from)]
+    fn apply(entities: &mut Ids<Entity>, vocabulary: &FactVocabulary, ev: &Event) {
+        // A local never takes the name of a module (`entity`, `event`):
+        // Aeneas writes the same name for both, and the Lean breaks.
+        match &ev.kind {
             EventKind::EntityCreated {
                 id,
                 entity_type,
                 name,
             } => {
-                entities
-                    .entry(*id)
-                    .or_insert_with(|| Entity::new(*id, *entity_type, name, event.tick));
+                if !entities.contains(*id) {
+                    entities.insert(
+                        *id,
+                        Entity {
+                            id: *id,
+                            entity_type: *entity_type,
+                            name: name.clone(),
+                            existence: TimeSpan::open(ev.tick),
+                            facts: Vec::new(),
+                        },
+                    );
+                }
             }
             EventKind::EntityDestroyed { id } => {
-                if let Some(entity) = entities.get_mut(id) {
+                if let Some(mut row) = entities.take(*id) {
                     // The entity stays. The history names it, and
                     // other facts point at it. Only the span
                     // closes, and the facts stay, because a grudge
                     // outlives the person and a crown does not
                     // (spec decision 9).
-                    if entity.existence.until.is_none() {
-                        entity.existence.until = Some(event.tick);
+                    if row.existence.until.is_none() {
+                        row.existence.until = Some(ev.tick);
                     }
+                    entities.insert(*id, row);
                 }
             }
             EventKind::FactStart {
-                entity,
+                entity: who,
                 name,
                 value,
                 linked_to,
             } => {
                 let wide = single_target(vocabulary, name);
-                if let Some(row) = entities.get_mut(entity) {
+                if let Some(mut row) = entities.take(*who) {
                     if wide {
-                        row.facts.retain(|f| f.name != *name);
+                        drop_name(&mut row.facts, name);
                     } else {
-                        row.facts.retain(|f| !f.same_slot(name, *linked_to));
+                        drop_slot(&mut row.facts, name, *linked_to);
                     }
                     row.facts.push(Fact {
                         name: name.clone(),
                         value: *value,
                         linked_to: *linked_to,
-                        opened: event.id,
+                        opened: ev.id,
                     });
+                    entities.insert(*who, row);
                 }
             }
             EventKind::FactUpdate {
-                entity,
+                entity: who,
                 name,
                 linked_to,
                 to,
                 ..
             } => {
-                if let Some(row) = entities.get_mut(entity) {
-                    if let Some(fact) = row.facts.iter_mut().find(|f| f.same_slot(name, *linked_to))
-                    {
+                if let Some(mut row) = entities.take(*who) {
+                    if let Some(i) = slot_index(&row.facts, name, *linked_to) {
                         // A new value is a new fact (spec decision
                         // 15), so `opened` moves to this event.
-                        fact.value = Some(*to);
-                        fact.opened = event.id;
+                        row.facts[i].value = Some(*to);
+                        row.facts[i].opened = ev.id;
                     }
+                    entities.insert(*who, row);
                 }
             }
             EventKind::FactEnd {
-                entity,
+                entity: who,
                 name,
                 linked_to,
             } => {
-                if let Some(row) = entities.get_mut(entity) {
-                    row.facts.retain(|f| !f.same_slot(name, *linked_to));
+                if let Some(mut row) = entities.take(*who) {
+                    drop_slot(&mut row.facts, name, *linked_to);
+                    entities.insert(*who, row);
                 }
             }
         }
@@ -302,7 +308,7 @@ impl World {
         seen.insert(id);
         let mut at = id;
         for _ in 0..MAX_HOPS {
-            let Some(up) = self.entities.get(&at).and_then(|e| e.location()) else {
+            let Some(up) = self.entities.get(at).and_then(|e| e.location()) else {
                 break;
             };
             if !seen.insert(up) {
@@ -327,7 +333,7 @@ impl World {
             if !seen.insert(at) {
                 return None;
             }
-            at = self.entities.get(&at).and_then(|e| e.location())?;
+            at = self.entities.get(at).and_then(|e| e.location())?;
         }
         None
     }
@@ -361,7 +367,7 @@ impl World {
 
     /// The targets one entity holds one name about.
     pub fn targets_of(&self, name: &str, holder: EntityId) -> Vec<EntityId> {
-        match self.entities.get(&holder) {
+        match self.entities.get(holder) {
             None => Vec::new(),
             Some(entity) => entity
                 .facts
@@ -383,13 +389,13 @@ impl World {
 
     /// The type of one entity, for the type map of a link.
     pub fn type_of(&self, id: EntityId) -> Option<EntityType> {
-        self.entities.get(&id).map(|e| e.entity_type)
+        self.entities.get(id).map(|e| e.entity_type)
     }
 
     /// The place a name reserves. `located_in` is the one name
     /// the crate declares, so the crate answers this itself.
     pub fn location_of(&self, id: EntityId) -> Option<EntityId> {
-        self.entities.get(&id).and_then(|e| e.location())
+        self.entities.get(id).and_then(|e| e.location())
     }
 
     /// What the crate hands the director: the entities that
@@ -421,9 +427,56 @@ impl World {
 
 /// Does this name allow one target at a time? An undeclared name
 /// does not, so an unknown name closes its own slot only.
-fn single_target(vocabulary: &FactVocabulary, name: &str) -> bool {
-    match vocabulary.rules(name) {
+#[allow(clippy::ptr_arg)]
+fn single_target(vocabulary: &FactVocabulary, name: &String) -> bool {
+    match vocabulary.rules_key(name) {
         Some(FactRules::Linked { targets, .. }) => targets.is_single(),
         _ => false,
     }
+}
+
+/// Is the fact in this slot? `Fact::same_slot`, with a `&String` name
+/// for the verified code (see `names.rs`).
+#[allow(clippy::ptr_arg)]
+fn in_slot(f: &Fact, name: &String, linked_to: Option<EntityId>) -> bool {
+    f.name == *name && f.linked_to == linked_to
+}
+
+/// Remove every fact of the name. The rest keep their order.
+#[allow(clippy::ptr_arg)]
+fn drop_name(facts: &mut Vec<Fact>, name: &String) {
+    let mut i = 0;
+    while i < facts.len() {
+        if facts[i].name == *name {
+            facts.remove(i);
+        } else {
+            i += 1;
+        }
+    }
+}
+
+/// Remove every fact in the slot. The rest keep their order.
+#[allow(clippy::ptr_arg)]
+fn drop_slot(facts: &mut Vec<Fact>, name: &String, linked_to: Option<EntityId>) {
+    let mut i = 0;
+    while i < facts.len() {
+        if in_slot(&facts[i], name, linked_to) {
+            facts.remove(i);
+        } else {
+            i += 1;
+        }
+    }
+}
+
+/// The place of the first fact in the slot, if one is there.
+#[allow(clippy::ptr_arg)]
+fn slot_index(facts: &[Fact], name: &String, linked_to: Option<EntityId>) -> Option<usize> {
+    let mut i = 0;
+    while i < facts.len() {
+        if in_slot(&facts[i], name, linked_to) {
+            return Some(i);
+        }
+        i += 1;
+    }
+    None
 }

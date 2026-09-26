@@ -639,6 +639,21 @@ def memory.merge
     ok (core.result.Result.Ok out2)
   else ok (core.result.Result.Err faults1)
 
+/-- [hourglass::time::{impl core::cmp::PartialEq<hourglass::time::EntityId> for hourglass::time::EntityId}::eq]:
+    Source: 'src/time.rs', lines 13:24-13:33
+    Visibility: public -/
+def time.EntityId.Insts.CoreCmpPartialEqEntityId.eq
+  (self : time.EntityId) (other : time.EntityId) : Result Bool := do
+  ok (self = other)
+
+/-- Trait implementation: [hourglass::time::{impl core::cmp::PartialEq<hourglass::time::EntityId> for hourglass::time::EntityId}]
+    Source: 'src/time.rs', lines 13:24-13:33 -/
+@[reducible]
+def time.EntityId.Insts.CoreCmpPartialEqEntityId : core.cmp.PartialEq
+  time.EntityId time.EntityId := {
+  eq := time.EntityId.Insts.CoreCmpPartialEqEntityId.eq
+}
+
 /-- [hourglass::time::{hourglass::time::TimeSpan}::open]:
     Source: 'src/time.rs', lines 50:4-52:5
     Visibility: public -/
@@ -680,33 +695,233 @@ def time.TimeSpan.sound (self : time.TimeSpan) : Result Bool := do
   | some «end» => time.Tick.Insts.CoreCmpPartialOrdTick.ge «end» self.from
 
 /-- [hourglass::world::{hourglass::world::World}::new]:
-    Source: 'src/world.rs', lines 67:4-74:5
+    Source: 'src/world.rs', lines 68:4-75:5
     Visibility: public -/
 def world.World.new
   (vocabulary : fact.FactVocabulary) : Result world.World := do
-  let bm ←
-    alloc.collections.btree.map.BTreeMapKVGlobal.new time.EntityId
-      entity.Entity
+  let i ← ids.Ids.new entity.Entity
   let eh ← event.EventHistory.new
-  ok { tick := 0#u64, vocabulary, entities := bm, history := eh }
+  ok { tick := 0#u64, vocabulary, entities := i, history := eh }
+
+/-- [hourglass::world::in_slot]:
+    Source: 'src/world.rs', lines 441:0-443:1 -/
+def world.in_slot
+  (f : fact.Fact) («name» : String) (linked_to : Option time.EntityId) :
+  Result Bool
+  := do
+  let b ← alloc.string.String.Insts.CoreCmpPartialEqString.eq f.name «name»
+  if b
+  then
+    core.option.Option.Insts.CoreCmpPartialEqOption.eq
+      time.EntityId.Insts.CoreCmpPartialEqEntityId f.linked_to linked_to
+  else ok false
+
+/-- [hourglass::world::slot_index]: loop 0:
+    Source: 'src/world.rs', lines 475:4-482:1 -/
+@[rust_loop]
+def world.slot_index_loop
+  (facts : Slice fact.Fact) («name» : String)
+  (linked_to : Option time.EntityId) (i : Std.Usize) :
+  Result (Option Std.Usize)
+  := do
+  let i1 := Slice.len facts
+  if i < i1
+  then
+    let f ← Slice.index_usize facts i
+    let b ← world.in_slot f «name» linked_to
+    if b
+    then ok (some i)
+    else
+      let i2 ← i + 1#usize
+      world.slot_index_loop facts «name» linked_to i2
+  else ok none
+partial_fixpoint
+
+/-- [hourglass::world::slot_index]:
+    Source: 'src/world.rs', lines 473:0-482:1 -/
+@[reducible]
+def world.slot_index
+  (facts : Slice fact.Fact) («name» : String)
+  (linked_to : Option time.EntityId) :
+  Result (Option Std.Usize)
+  := do
+  world.slot_index_loop facts «name» linked_to 0#usize
+
+/-- [hourglass::world::drop_slot]: loop 0:
+    Source: 'src/world.rs', lines 462:4-468:5 -/
+@[rust_loop]
+def world.drop_slot_loop
+  (facts : alloc.vec.Vec fact.Fact) («name» : String)
+  (linked_to : Option time.EntityId) (i : Std.Usize) :
+  Result (alloc.vec.Vec fact.Fact)
+  := do
+  let i1 := alloc.vec.Vec.len facts
+  if i < i1
+  then
+    let f ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice fact.Fact)
+        facts i
+    let b ← world.in_slot f «name» linked_to
+    if b
+    then
+      let (_, facts1) ← alloc.vec.Vec.remove Global facts i
+      world.drop_slot_loop facts1 «name» linked_to i
+    else
+      let i2 ← i + 1#usize
+      world.drop_slot_loop facts «name» linked_to i2
+  else ok facts
+partial_fixpoint
+
+/-- [hourglass::world::drop_slot]:
+    Source: 'src/world.rs', lines 460:0-469:1 -/
+@[reducible]
+def world.drop_slot
+  (facts : alloc.vec.Vec fact.Fact) («name» : String)
+  (linked_to : Option time.EntityId) :
+  Result (alloc.vec.Vec fact.Fact)
+  := do
+  world.drop_slot_loop facts «name» linked_to 0#usize
+
+/-- [hourglass::world::drop_name]: loop 0:
+    Source: 'src/world.rs', lines 449:4-455:5 -/
+@[rust_loop]
+def world.drop_name_loop
+  (facts : alloc.vec.Vec fact.Fact) («name» : String) (i : Std.Usize) :
+  Result (alloc.vec.Vec fact.Fact)
+  := do
+  let i1 := alloc.vec.Vec.len facts
+  if i < i1
+  then
+    let f ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice fact.Fact)
+        facts i
+    let b ←
+      alloc.string.String.Insts.CoreCmpPartialEqString.eq f.name «name»
+    if b
+    then
+      let (_, facts1) ← alloc.vec.Vec.remove Global facts i
+      world.drop_name_loop facts1 «name» i
+    else let i2 ← i + 1#usize
+         world.drop_name_loop facts «name» i2
+  else ok facts
+partial_fixpoint
+
+/-- [hourglass::world::drop_name]:
+    Source: 'src/world.rs', lines 447:0-456:1 -/
+@[reducible]
+def world.drop_name
+  (facts : alloc.vec.Vec fact.Fact) («name» : String) :
+  Result (alloc.vec.Vec fact.Fact)
+  := do
+  world.drop_name_loop facts «name» 0#usize
+
+/-- [hourglass::world::single_target]:
+    Source: 'src/world.rs', lines 431:0-436:1 -/
+def world.single_target
+  (vocabulary : fact.FactVocabulary) («name» : String) : Result Bool := do
+  let o ← fact.FactVocabulary.rules_key vocabulary «name»
+  match o with
+  | none => ok false
+  | some fr =>
+    match fr with
+    | fact.FactRules.Solo _ => ok false
+    | fact.FactRules.Linked _ _ targets _ => fact.Count.is_single targets
+
+/-- [hourglass::world::{hourglass::world::World}::apply]:
+    Source: 'src/world.rs', lines 159:4-244:5 -/
+def world.World.apply
+  (entities : ids.Ids entity.Entity) (vocabulary : fact.FactVocabulary)
+  (ev : event.Event) :
+  Result (ids.Ids entity.Entity)
+  := do
+  match ev.kind with
+  | event.EventKind.EntityCreated id entity_type «name» =>
+    let b ← ids.Ids.contains entities id
+    if b
+    then ok entities
+    else
+      let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+      let ts ← time.TimeSpan.open ev.tick
+      ids.Ids.insert entities id
+        ({
+           id,
+           entity_type,
+           «name» := s,
+           existence := ts,
+           facts := (alloc.vec.Vec.new fact.Fact)
+         } : entity.Entity)
+  | event.EventKind.EntityDestroyed id =>
+    let (o, entities1) ← ids.Ids.take entities id
+    match o with
+    | none => ok entities1
+    | some row =>
+      let b := core.option.Option.is_none row.existence.until
+      let o1 ← if b
+                 then ok (some ev.tick)
+                 else ok row.existence.until
+      ids.Ids.insert entities1 id
+        { row with existence := { row.existence with «until» := o1 } }
+  | event.EventKind.FactStart who «name» value linked_to =>
+    let wide ← world.single_target vocabulary «name»
+    let (o, entities1) ← ids.Ids.take entities who
+    match o with
+    | none => ok entities1
+    | some row =>
+      let v ←
+        if wide
+        then world.drop_name row.facts «name»
+        else world.drop_slot row.facts «name» linked_to
+      let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+      let v1 ←
+        alloc.vec.Vec.push v
+          ({ «name» := s, value, linked_to, opened := ev.id } : fact.Fact)
+      ids.Ids.insert entities1 who { row with facts := v1 }
+  | event.EventKind.FactUpdate who «name» linked_to _ «to» =>
+    let (o, entities1) ← ids.Ids.take entities who
+    match o with
+    | none => ok entities1
+    | some row =>
+      let s := alloc.vec.Vec.deref row.facts
+      let o1 ← world.slot_index s «name» linked_to
+      let v ←
+        match o1 with
+        | none => ok row.facts
+        | some i =>
+          do
+          let (f, index_mut_back) ←
+            alloc.vec.Vec.index_mut (core.slice.index.SliceIndexUsizeSlice
+              fact.Fact) row.facts i
+          let v1 := index_mut_back { f with value := (some «to») }
+          let (f1, index_mut_back1) ←
+            alloc.vec.Vec.index_mut (core.slice.index.SliceIndexUsizeSlice
+              fact.Fact) v1 i
+          ok (index_mut_back1 { f1 with opened := ev.id })
+      ids.Ids.insert entities1 who { row with facts := v }
+  | event.EventKind.FactEnd who «name» linked_to =>
+    let (o, entities1) ← ids.Ids.take entities who
+    match o with
+    | none => ok entities1
+    | some row =>
+      let v ← world.drop_slot row.facts «name» linked_to
+      ids.Ids.insert entities1 who { row with facts := v }
 
 /-- [hourglass::world::{hourglass::world::World}::commit]:
-    Source: 'src/world.rs', lines 141:4-152:5
+    Source: 'src/world.rs', lines 136:4-147:5
     Visibility: public -/
 def world.World.commit
   (self : world.World) (tick : time.Tick) (kind : event.EventKind) :
   Result (time.EventId × world.World)
   := do
   let id ← event.EventHistory.next_id self.history
-  let bm ← world.World.apply self.entities self.vocabulary { id, tick, kind }
+  let i ← world.World.apply self.entities self.vocabulary { id, tick, kind }
   let eh ← event.EventHistory.append self.history { id, tick, kind }
   let b ← time.Tick.Insts.CoreCmpPartialOrdTick.gt tick self.tick
   if b
-  then ok (id, { self with tick, entities := bm, history := eh })
-  else ok (id, { self with entities := bm, history := eh })
+  then ok (id, { self with tick, entities := i, history := eh })
+  else ok (id, { self with entities := i, history := eh })
 
 /-- [hourglass::world::{hourglass::world::World}::propose]:
-    Source: 'src/world.rs', lines 116:4-122:5
+    Source: 'src/world.rs', lines 111:4-117:5
     Visibility: public -/
 def world.World.propose
   (self : world.World) (tick : time.Tick) (kind : event.EventKind) :
@@ -722,19 +937,19 @@ def world.World.propose
   else ok (core.result.Result.Err faults, self)
 
 /-- [hourglass::world::{hourglass::world::World}::replay_one]:
-    Source: 'src/world.rs', lines 265:4-271:5 -/
+    Source: 'src/world.rs', lines 271:4-277:5 -/
 def world.World.replay_one
   (self : world.World) (ev : event.Event) : Result world.World := do
   let ek ← event.EventKind.Insts.CoreCloneClone.clone ev.kind
   let (_, eh) ← event.EventHistory.push self.history ev.tick ek
-  let bm ← world.World.apply self.entities self.vocabulary ev
+  let i ← world.World.apply self.entities self.vocabulary ev
   let b ← time.Tick.Insts.CoreCmpPartialOrdTick.gt ev.tick self.tick
   if b
-  then ok { self with tick := ev.tick, entities := bm, history := eh }
-  else ok { self with entities := bm, history := eh }
+  then ok { self with tick := ev.tick, entities := i, history := eh }
+  else ok { self with entities := i, history := eh }
 
 /-- [hourglass::world::{hourglass::world::World}::replay]: loop 0:
-    Source: 'src/world.rs', lines 257:8-260:9
+    Source: 'src/world.rs', lines 263:8-266:9
     Visibility: public -/
 @[rust_loop]
 def world.World.replay_loop
@@ -752,7 +967,7 @@ def world.World.replay_loop
 partial_fixpoint
 
 /-- [hourglass::world::{hourglass::world::World}::replay]:
-    Source: 'src/world.rs', lines 253:4-262:5
+    Source: 'src/world.rs', lines 259:4-268:5
     Visibility: public -/
 def world.World.replay
   (vocabulary : fact.FactVocabulary) (history : event.EventHistory) :
@@ -763,7 +978,7 @@ def world.World.replay
   world.World.replay_loop out events 0#usize
 
 /-- [hourglass::world::{hourglass::world::World}::rewind]:
-    Source: 'src/world.rs', lines 277:4-282:5
+    Source: 'src/world.rs', lines 283:4-288:5
     Visibility: public -/
 def world.World.rewind
   (self : world.World) (after : time.EventId) : Result world.World := do
