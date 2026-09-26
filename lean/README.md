@@ -5,8 +5,8 @@ functions. The theorems in `Hourglass/Laws.lean`,
 `Hourglass/Merge.lean`, `Hourglass/World.lean`,
 `Hourglass/Apply.lean`, `Hourglass/Gate.lean`,
 `Hourglass/Direction.lean`, `Hourglass/Counts.lean`,
-`Hourglass/Cycle.lean`, and `Hourglass/Referee.lean` are about those
-functions. A theorem holds
+`Hourglass/Cycle.lean`, `Hourglass/Referee.lean`, and
+`Hourglass/Batch.lean` are about those functions. A theorem holds
 for every input, with no bound. Kani checks the rung 1 laws in
 `src/proofs.rs`, but only up to its bounds.
 
@@ -164,6 +164,14 @@ invariants: every link obeys the type map, every `opened` points
 inside the history, every span starts before it ends, and every
 entity has exactly one creation event. The vocabulary must declare
 `located_in` with one target.
+
+## What is proved: rung 10, the batch
+
+| Theorem | The law |
+|---|---|
+| `propose_all_eq` | `propose_all` gives exactly the answers and the world of proposing each kind in order. |
+| `proposeList_reach` | So the world after a batch is a world that proposals build. |
+| `every_batch_verifies` | After a world that proposals build and one batch, the referee passes. |
 
 ## What you trust
 
@@ -342,13 +350,17 @@ an early answer is a function of its own. The answers stay the same.
 The ring check is a bounded walk: a chain with no ring ends within
 `len` hops.
 
+### Rung 10: the batch (BUILT)
+
+`propose_all` is an index loop that calls `propose` for each kind in
+order, with the same answers.
+
 What waits: no law reads the remaining code yet.
 
 | Group | Where | The fix |
 |---|---|---|
 | A `&'static str` label, and the text of a rejection | `EntityType::label`, `EventKind` label, `Direction::label`, `Shape::label`, `reject.rs` lines 221 and 326 | None. These are text, and no law reads them. Keep them out of the marks. |
 | An iterator chain with a closure | `Entity::fact`, `World::contents`, `holders_of`, `targets_of`, `facts_linked_to`, `memory_names` | Write each one as an explicit loop over the wrapper walk. |
-| A closure that captures `&mut self` | `World::propose_all` | A loop that calls `propose`. |
 
 ## Known Aeneas limits
 

@@ -9,6 +9,7 @@ import Hourglass.Direction
 import Hourglass.Counts
 import Hourglass.Cycle
 import Hourglass.Referee
+import Hourglass.Batch
 
 open hourglass
 
@@ -251,3 +252,15 @@ open hourglass
 /-- info: 'hourglass.every_proposed_world_verifies' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms every_proposed_world_verifies
+
+/-- info: 'hourglass.propose_all_eq' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms propose_all_eq
+
+/-- info: 'hourglass.proposeList_reach' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms proposeList_reach
+
+/-- info: 'hourglass.every_batch_verifies' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms every_batch_verifies

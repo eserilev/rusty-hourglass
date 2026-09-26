@@ -1021,7 +1021,7 @@ def validate.target_fits
         (reject.Malformed.TakesNoTarget s))
 
 /-- [hourglass::world::in_slot]:
-    Source: 'src/world.rs', lines 453:0-455:1 -/
+    Source: 'src/world.rs', lines 457:0-459:1 -/
 def world.in_slot
   (f : fact.Fact) («name» : String) (linked_to : Option time.EntityId) :
   Result Bool
@@ -1034,7 +1034,7 @@ def world.in_slot
   else ok false
 
 /-- [hourglass::world::slot_index]: loop 0:
-    Source: 'src/world.rs', lines 491:4-498:1 -/
+    Source: 'src/world.rs', lines 495:4-502:1 -/
 @[rust_loop]
 def world.slot_index_loop
   (facts : Slice fact.Fact) («name» : String)
@@ -1055,7 +1055,7 @@ def world.slot_index_loop
 partial_fixpoint
 
 /-- [hourglass::world::slot_index]:
-    Source: 'src/world.rs', lines 485:0-498:1 -/
+    Source: 'src/world.rs', lines 489:0-502:1 -/
 @[reducible]
 def world.slot_index
   (facts : Slice fact.Fact) («name» : String)
@@ -1223,7 +1223,7 @@ def validate.update
     else ok out3
 
 /-- [hourglass::world::{hourglass::world::World}::ever_ended]:
-    Source: 'src/world.rs', lines 391:4-393:5
+    Source: 'src/world.rs', lines 395:4-397:5
     Visibility: public -/
 def world.World.ever_ended
   (self : world.World) (entity : time.EntityId) («name» : Str) :
@@ -1232,7 +1232,7 @@ def world.World.ever_ended
   event.EventHistory.ever_ended self.history entity «name»
 
 /-- [hourglass::world::{hourglass::world::World}::location_of]:
-    Source: 'src/world.rs', lines 406:4-411:5
+    Source: 'src/world.rs', lines 410:4-415:5
     Visibility: public -/
 def world.World.location_of
   (self : world.World) (id : time.EntityId) :
@@ -1244,7 +1244,7 @@ def world.World.location_of
   | some e => entity.Entity.location e
 
 /-- [hourglass::world::{hourglass::world::World}::would_cycle]: loop 0:
-    Source: 'src/world.rs', lines 332:8-347:5
+    Source: 'src/world.rs', lines 336:8-351:5
     Visibility: public -/
 @[rust_loop]
 def world.World.would_cycle_loop
@@ -1275,7 +1275,7 @@ def world.World.would_cycle_loop
 partial_fixpoint
 
 /-- [hourglass::world::{hourglass::world::World}::would_cycle]:
-    Source: 'src/world.rs', lines 328:4-347:5
+    Source: 'src/world.rs', lines 332:4-351:5
     Visibility: public -/
 def world.World.would_cycle
   (self : world.World) (entity : time.EntityId) (target : time.EntityId) :
@@ -1447,7 +1447,7 @@ def validate.counts_fit
           else ok out1
 
 /-- [hourglass::world::{hourglass::world::World}::type_of]:
-    Source: 'src/world.rs', lines 397:4-402:5
+    Source: 'src/world.rs', lines 401:4-406:5
     Visibility: public -/
 def world.World.type_of
   (self : world.World) (id : time.EntityId) :
@@ -1513,7 +1513,7 @@ def validate.number_fits
           (reject.Malformed.OutOfBand s n band.min band.max))
 
 /-- [hourglass::world::name_index]: loop 0:
-    Source: 'src/world.rs', lines 504:4-511:1 -/
+    Source: 'src/world.rs', lines 508:4-515:1 -/
 @[rust_loop]
 def world.name_index_loop
   (facts : Slice fact.Fact) («name» : String) (i : Std.Usize) :
@@ -1533,7 +1533,7 @@ def world.name_index_loop
 partial_fixpoint
 
 /-- [hourglass::world::name_index]:
-    Source: 'src/world.rs', lines 502:0-511:1 -/
+    Source: 'src/world.rs', lines 506:0-515:1 -/
 @[reducible]
 def world.name_index
   (facts : Slice fact.Fact) («name» : String) :
@@ -1542,7 +1542,7 @@ def world.name_index
   world.name_index_loop facts «name» 0#usize
 
 /-- [hourglass::world::single_target]:
-    Source: 'src/world.rs', lines 443:0-448:1 -/
+    Source: 'src/world.rs', lines 447:0-452:1 -/
 def world.single_target
   (vocabulary : fact.FactVocabulary) («name» : String) : Result Bool := do
   let o ← fact.FactVocabulary.rules_key vocabulary «name»
@@ -2644,7 +2644,7 @@ def world.World.new
   ok { tick := 0#u64, vocabulary, entities := i, history := eh }
 
 /-- [hourglass::world::drop_slot]: loop 0:
-    Source: 'src/world.rs', lines 474:4-480:5 -/
+    Source: 'src/world.rs', lines 478:4-484:5 -/
 @[rust_loop]
 def world.drop_slot_loop
   (facts : alloc.vec.Vec fact.Fact) («name» : String)
@@ -2669,7 +2669,7 @@ def world.drop_slot_loop
 partial_fixpoint
 
 /-- [hourglass::world::drop_slot]:
-    Source: 'src/world.rs', lines 472:0-481:1 -/
+    Source: 'src/world.rs', lines 476:0-485:1 -/
 @[reducible]
 def world.drop_slot
   (facts : alloc.vec.Vec fact.Fact) («name» : String)
@@ -2679,7 +2679,7 @@ def world.drop_slot
   world.drop_slot_loop facts «name» linked_to 0#usize
 
 /-- [hourglass::world::drop_name]: loop 0:
-    Source: 'src/world.rs', lines 461:4-467:5 -/
+    Source: 'src/world.rs', lines 465:4-471:5 -/
 @[rust_loop]
 def world.drop_name_loop
   (facts : alloc.vec.Vec fact.Fact) («name» : String) (i : Std.Usize) :
@@ -2703,7 +2703,7 @@ def world.drop_name_loop
 partial_fixpoint
 
 /-- [hourglass::world::drop_name]:
-    Source: 'src/world.rs', lines 459:0-468:1 -/
+    Source: 'src/world.rs', lines 463:0-472:1 -/
 @[reducible]
 def world.drop_name
   (facts : alloc.vec.Vec fact.Fact) («name» : String) :
@@ -2712,7 +2712,7 @@ def world.drop_name
   world.drop_name_loop facts «name» 0#usize
 
 /-- [hourglass::world::{hourglass::world::World}::apply]:
-    Source: 'src/world.rs', lines 159:4-244:5 -/
+    Source: 'src/world.rs', lines 163:4-248:5 -/
 def world.World.apply
   (entities : ids.Ids entity.Entity) (vocabulary : fact.FactVocabulary)
   (ev : event.Event) :
@@ -2790,7 +2790,7 @@ def world.World.apply
       ids.Ids.insert entities1 who { row with facts := v }
 
 /-- [hourglass::world::{hourglass::world::World}::commit]:
-    Source: 'src/world.rs', lines 136:4-147:5
+    Source: 'src/world.rs', lines 140:4-151:5
     Visibility: public -/
 def world.World.commit
   (self : world.World) (tick : time.Tick) (kind : event.EventKind) :
@@ -2820,8 +2820,47 @@ def world.World.propose
     ok (core.result.Result.Ok ei, self1)
   else ok (core.result.Result.Err faults, self)
 
+/-- [hourglass::world::{hourglass::world::World}::propose_all]: loop 0:
+    Source: 'src/world.rs', lines 130:8-133:9
+    Visibility: public -/
+@[rust_loop]
+def world.World.propose_all_loop
+  (self : world.World) (tick : time.Tick)
+  (kinds : alloc.vec.Vec event.EventKind)
+  (out : alloc.vec.Vec (core.result.Result time.EventId (alloc.vec.Vec
+  reject.Rejection))) (i : Std.Usize) :
+  Result ((alloc.vec.Vec (core.result.Result time.EventId (alloc.vec.Vec
+    reject.Rejection))) × world.World)
+  := do
+  let i1 := alloc.vec.Vec.len kinds
+  if i < i1
+  then
+    let ek ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice
+        event.EventKind) kinds i
+    let ek1 ← event.EventKind.Insts.CoreCloneClone.clone ek
+    let (r, self1) ← world.World.propose self tick ek1
+    let out1 ← alloc.vec.Vec.push out r
+    let i2 ← i + 1#usize
+    world.World.propose_all_loop self1 tick kinds out1 i2
+  else ok (out, self)
+partial_fixpoint
+
+/-- [hourglass::world::{hourglass::world::World}::propose_all]:
+    Source: 'src/world.rs', lines 123:4-135:5
+    Visibility: public -/
+@[reducible]
+def world.World.propose_all
+  (self : world.World) (tick : time.Tick)
+  (kinds : alloc.vec.Vec event.EventKind) :
+  Result ((alloc.vec.Vec (core.result.Result time.EventId (alloc.vec.Vec
+    reject.Rejection))) × world.World)
+  := do
+  world.World.propose_all_loop self tick kinds (alloc.vec.Vec.new
+    (core.result.Result time.EventId (alloc.vec.Vec reject.Rejection))) 0#usize
+
 /-- [hourglass::world::{hourglass::world::World}::replay_one]:
-    Source: 'src/world.rs', lines 271:4-277:5 -/
+    Source: 'src/world.rs', lines 275:4-281:5 -/
 def world.World.replay_one
   (self : world.World) (ev : event.Event) : Result world.World := do
   let ek ← event.EventKind.Insts.CoreCloneClone.clone ev.kind
@@ -2833,7 +2872,7 @@ def world.World.replay_one
   else ok { self with entities := i, history := eh }
 
 /-- [hourglass::world::{hourglass::world::World}::replay]: loop 0:
-    Source: 'src/world.rs', lines 263:8-266:9
+    Source: 'src/world.rs', lines 267:8-270:9
     Visibility: public -/
 @[rust_loop]
 def world.World.replay_loop
@@ -2851,7 +2890,7 @@ def world.World.replay_loop
 partial_fixpoint
 
 /-- [hourglass::world::{hourglass::world::World}::replay]:
-    Source: 'src/world.rs', lines 259:4-268:5
+    Source: 'src/world.rs', lines 263:4-272:5
     Visibility: public -/
 def world.World.replay
   (vocabulary : fact.FactVocabulary) (history : event.EventHistory) :
@@ -2862,7 +2901,7 @@ def world.World.replay
   world.World.replay_loop out events 0#usize
 
 /-- [hourglass::world::{hourglass::world::World}::rewind]:
-    Source: 'src/world.rs', lines 283:4-288:5
+    Source: 'src/world.rs', lines 287:4-292:5
     Visibility: public -/
 def world.World.rewind
   (self : world.World) (after : time.EventId) : Result world.World := do

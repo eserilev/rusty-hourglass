@@ -119,15 +119,19 @@ impl World {
     /// Propose several events at one tick. Each one stands alone:
     /// the good ones land, and only the bad ones come back. A bad
     /// proposal costs one event, never the whole tick.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn propose_all(
         &mut self,
         tick: Tick,
         kinds: Vec<EventKind>,
     ) -> Vec<Result<EventId, Vec<Rejection>>> {
-        kinds
-            .into_iter()
-            .map(|kind| self.propose(tick, kind))
-            .collect()
+        let mut out = Vec::new();
+        let mut i = 0;
+        while i < kinds.len() {
+            out.push(self.propose(tick, kinds[i].clone()));
+            i += 1;
+        }
+        out
     }
 
     /// Fold an event in with no check. The caller carries the

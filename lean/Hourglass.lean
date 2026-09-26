@@ -9,4 +9,5 @@ import Hourglass.Direction
 import Hourglass.Counts
 import Hourglass.Cycle
 import Hourglass.Referee
+import Hourglass.Batch
 import Hourglass.Trust
