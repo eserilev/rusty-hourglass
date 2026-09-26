@@ -321,7 +321,7 @@ structure world.World where
   history : event.EventHistory
 
 /-- [hourglass::verify::Row]
-    Source: 'src/verify.rs', lines 42:0-48:1 -/
+    Source: 'src/verify.rs', lines 43:0-49:1 -/
 structure verify.Row where
   kind : entity.EntityType
   «name» : String

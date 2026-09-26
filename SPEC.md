@@ -12,7 +12,7 @@ second time and checks twelve invariants. Sixty-nine tests pass,
 and ten Kani harnesses prove the join laws per value, the direction
 law, and the band laws. `merge` applies the join name by name.
 Aeneas translates the scalar core and the record merge to Lean.
-Fifty-five Lean theorems hold for every input with no bound
+Sixty Lean theorems hold for every input with no bound
 (`lean/README.md`): the ten Kani laws, panic freedom of the join,
 and the record laws. A merge answers the same in either order, and
 it ignores the grouping. A merge with itself or with an empty
@@ -32,7 +32,9 @@ direction law: in every world that proposals build, a fact of an
 laws: in every world that proposals build, no target has more
 holders than its name allows, and no entity holds more targets.
 Seven more hold the ring law: in every world that proposals build,
-no place sits inside itself. No consumer calls the crate yet.
+no place sits inside itself. Five more hold the referee law: in every
+world that proposals build, `verify` passes all twelve invariants.
+No consumer calls the crate yet.
 
 The build went past the decisions below in eleven places. The
 section "Built past the decisions" names each one. Read that
@@ -1095,7 +1097,8 @@ the poor fits too, so nobody re-litigates them.
    state divergence expensive.
 5. Aeneas, one rung at a time. The built rungs are the scalar core,
    the record merge, the world laws, the rules inside `apply`, the
-   band law, the direction law, the count laws, and the ring law.
+   band law, the direction law, the count laws, the ring law, and the
+   referee law.
    `lean/README.md` holds the rungs and the
    map of the code that does not translate yet.
 

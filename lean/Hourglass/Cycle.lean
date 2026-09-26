@@ -105,7 +105,38 @@ theorem loc_test {s : String} {str : Str} {b : Bool}
         fun a c hac => UScalar.eq_of_val_eq hac
       apply List.map_injective_iff.2 hinj
       simpa [List.map_map, Function.comp_def] using h
-  · simp at h1
+  · -- A string longer than `Usize.max` bytes: no Rust string, and never
+    -- `located_in`.
+    rename_i hlong
+    simp only [ok.injEq] at h1
+    subst h1
+    simp only [fact.is_located_in, core.str.Str.as_bytes, core.array.Array.index,
+      core.ops.index.IndexSlice, core.slice.index.Slice.index,
+      core.slice.index.SliceIndexRangeFullSlice, core.slice.index.SliceIndexRangeFullSlice.index,
+      bind_tc_ok, slice_eq_u8, ok.injEq] at h2
+    subst h2
+    have hmax : 10 < Usize.max := by
+      rw [Usize.max, Usize.numBits]
+      rcases System.Platform.numBits_eq with h | h <;> simp [UScalarTy.Usize_numBits_eq, h]
+    have hloc : fact.LOCATED_IN_BYTES.val.length = 10 := by
+      unfold fact.LOCATED_IN_BYTES; simp
+    have hs : s ≠ "located_in" := by
+      intro hs
+      subst hs
+      apply hlong
+      have := congrArg List.length located_bytes
+      simp only [List.length_map] at this
+      simp only [List.length_map]
+      omega
+    simp only [locB, hs, decide_false]
+    apply decide_eq_false
+    intro h
+    have := congrArg List.length h
+    simp only [Slice.from_val, Array.to_slice, List.length_take, List.length_map] at this
+    have hlong' : Usize.max < (s.toByteArray.toList).length := by
+      simp only [List.length_map, not_le] at hlong; exact hlong
+    rw [hloc] at this
+    omega
 
 /-! ## Where an entity sits -/
 

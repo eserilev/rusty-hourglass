@@ -159,12 +159,15 @@ def alloc.string.String.Insts.CoreCmpPartialEqString.eq (a b : String) : Result 
   ok (decide (a = b))
 
 /-- `String` as `&str`: the UTF-8 bytes of the string. A Rust string
-    holds at most `isize::MAX` bytes, so the bound always holds. -/
+    holds at most `isize::MAX` bytes, so the first branch always runs. A
+    Lean string has no such bound. The second branch keeps the model
+    total, and no Rust string reaches it. -/
 @[rust_fun "alloc::string::{core::ops::deref::Deref<alloc::string::String, str>}::deref"]
 def alloc.string.String.Insts.CoreOpsDerefDerefStr.deref (s : String) : Result Str :=
   let l : List U8 := s.toByteArray.toList.map
     (fun x => UScalar.ofNatCore x.toNat (by have := x.toNat_lt; simpa using this))
-  if h : l.length ≤ Usize.max then ok (Slice.from l h) else fail .panic
+  if h : l.length ≤ Usize.max then ok (Slice.from l h)
+  else ok (Slice.from (l.take Usize.max) (by simp))
 
 /-- `str::as_bytes`: the model of a `str` is its bytes already. -/
 @[rust_fun "core::str::{str}::as_bytes"]

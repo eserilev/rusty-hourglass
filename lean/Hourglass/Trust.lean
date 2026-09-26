@@ -8,6 +8,7 @@ import Hourglass.Gate
 import Hourglass.Direction
 import Hourglass.Counts
 import Hourglass.Cycle
+import Hourglass.Referee
 
 open hourglass
 
@@ -230,3 +231,23 @@ open hourglass
 /-- info: 'hourglass.no_place_inside_itself' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms no_place_inside_itself
+
+/-- info: 'hourglass.apply_shape' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms apply_shape
+
+/-- info: 'hourglass.refold_step' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms refold_step
+
+/-- info: 'hourglass.same_state_true' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms same_state_true
+
+/-- info: 'hourglass.sound_true' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms sound_true
+
+/-- info: 'hourglass.every_proposed_world_verifies' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms every_proposed_world_verifies

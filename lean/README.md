@@ -4,8 +4,9 @@ Aeneas translates the Rust code of the crate into pure Lean
 functions. The theorems in `Hourglass/Laws.lean`,
 `Hourglass/Merge.lean`, `Hourglass/World.lean`,
 `Hourglass/Apply.lean`, `Hourglass/Gate.lean`,
-`Hourglass/Direction.lean`, `Hourglass/Counts.lean`, and
-`Hourglass/Cycle.lean` are about those functions. A theorem holds
+`Hourglass/Direction.lean`, `Hourglass/Counts.lean`,
+`Hourglass/Cycle.lean`, and `Hourglass/Referee.lean` are about those
+functions. A theorem holds
 for every input, with no bound. Kani checks the rung 1 laws in
 `src/proofs.rs`, but only up to its bounds.
 
@@ -148,6 +149,22 @@ The law holds for a vocabulary that declares `located_in` with one
 target, as `FactVocabulary::new` does. `vocabulary_sound` refuses any
 other rules for the name.
 
+## What is proved: rung 9, the referee
+
+| Theorem | The law |
+|---|---|
+| `every_proposed_world_verifies` | In every world that proposals build from an empty world, `verify` answers `true`. The referee folds the history a second time with its own writer and checks the twelve invariants of the spec. |
+| `same_state_true` | The state equals the second fold of the history (invariant 1), and the ticks never fall (invariant 12). |
+| `sound_true` | Invariants 2 to 11 hold. |
+| `refold_step` | The writer of the referee and `apply` agree on each event. |
+| `apply_shape` | Every row after `apply` comes from the old row at its key, or it is the row of a creation. |
+
+The referee law reads every law of the rungs before, and four new
+invariants: every link obeys the type map, every `opened` points
+inside the history, every span starts before it ends, and every
+entity has exactly one creation event. The vocabulary must declare
+`located_in` with one target.
+
 ## What you trust
 
 1. **Charon and Aeneas.** A bug in the translation makes the Lean
@@ -161,7 +178,10 @@ other rules for the name.
      `Vec::default`, and `std::mem::take`.
    - `String` equality and `Vec::remove`.
    - `String` as `&str`, and `str` equality. The model of a `str` is
-     its UTF-8 bytes, and the compare is on the bytes, as in Rust.
+     its UTF-8 bytes, and the compare is on the bytes, as in Rust. A
+     Rust string holds at most `isize::MAX` bytes. A Lean string has
+     no bound, so the model keeps the first `Usize.max` bytes of a
+     longer one. No Rust string reaches that branch.
    - The type map inside `FactRules`. Its model is the list of its
      entries in key order, and `get` finds the first equal key.
    - The derives of `EntityType`: the compares follow the order of
@@ -314,6 +334,13 @@ translate. `ever_ended` is an index loop on `EventHistory`, and
 `type_allowed` reads the type map with `get` and `is_empty`. `blank`
 keeps a model body and two contract tests. No law of the gate
 depends on an axiom of the crate now.
+
+### Rung 9: the referee (BUILT)
+
+`verify` is a set of index loops over `Ids`, and each loop body with
+an early answer is a function of its own. The answers stay the same.
+The ring check is a bounded walk: a chain with no ring ends within
+`len` hops.
 
 What waits: no law reads the remaining code yet.
 

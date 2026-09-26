@@ -1732,7 +1732,7 @@ def world.World.len (self : world.World) : Result Std.Usize := do
   ids.Ids.len self.entities
 
 /-- [hourglass::verify::up]: loop 0:
-    Source: 'src/verify.rs', lines 492:4-499:1 -/
+    Source: 'src/verify.rs', lines 493:4-500:1 -/
 @[rust_loop]
 def verify.up_loop
   (row : entity.Entity) (i : Std.Usize) : Result (Option time.EntityId) := do
@@ -1752,7 +1752,7 @@ def verify.up_loop
 partial_fixpoint
 
 /-- [hourglass::verify::up]:
-    Source: 'src/verify.rs', lines 487:0-499:1 -/
+    Source: 'src/verify.rs', lines 488:0-500:1 -/
 def verify.up
   (w : world.World) («at» : time.EntityId) :
   Result (Option time.EntityId)
@@ -1763,7 +1763,7 @@ def verify.up
   | some row => verify.up_loop row 0#usize
 
 /-- [hourglass::verify::walk_is_finite]: loop 0:
-    Source: 'src/verify.rs', lines 474:4-482:1 -/
+    Source: 'src/verify.rs', lines 475:4-483:1 -/
 @[rust_loop]
 def verify.walk_is_finite_loop
   (w : world.World) (n : Std.Usize) («at» : time.EntityId) (hops : Std.Usize)
@@ -1783,14 +1783,14 @@ def verify.walk_is_finite_loop
 partial_fixpoint
 
 /-- [hourglass::verify::walk_is_finite]:
-    Source: 'src/verify.rs', lines 470:0-482:1 -/
+    Source: 'src/verify.rs', lines 471:0-483:1 -/
 def verify.walk_is_finite
   (w : world.World) (start : time.EntityId) : Result Bool := do
   let n ← world.World.len w
   verify.walk_is_finite_loop w n start 0#usize
 
 /-- [hourglass::verify::slot_before]: loop 0:
-    Source: 'src/verify.rs', lines 397:4-404:1 -/
+    Source: 'src/verify.rs', lines 398:4-405:1 -/
 @[rust_loop]
 def verify.slot_before_loop
   (facts : Slice fact.Fact) (i : Std.Usize) (j : Std.Usize) : Result Bool := do
@@ -1815,14 +1815,14 @@ def verify.slot_before_loop
 partial_fixpoint
 
 /-- [hourglass::verify::slot_before]:
-    Source: 'src/verify.rs', lines 395:0-404:1 -/
+    Source: 'src/verify.rs', lines 396:0-405:1 -/
 @[reducible]
 def verify.slot_before
   (facts : Slice fact.Fact) (i : Std.Usize) : Result Bool := do
   verify.slot_before_loop facts i 0#usize
 
 /-- [hourglass::verify::first_target]: loop 0:
-    Source: 'src/verify.rs', lines 457:4-464:1 -/
+    Source: 'src/verify.rs', lines 458:4-465:1 -/
 @[rust_loop]
 def verify.first_target_loop
   (facts : Slice fact.Fact) («name» : String) (i : Std.Usize) (j : Std.Usize)
@@ -1850,7 +1850,7 @@ def verify.first_target_loop
 partial_fixpoint
 
 /-- [hourglass::verify::first_target]:
-    Source: 'src/verify.rs', lines 452:0-464:1 -/
+    Source: 'src/verify.rs', lines 453:0-465:1 -/
 def verify.first_target
   (facts : Slice fact.Fact) («name» : String) (i : Std.Usize) :
   Result Bool
@@ -1866,7 +1866,7 @@ def verify.first_target
     else verify.first_target_loop facts «name» i 0#usize
 
 /-- [hourglass::verify::distinct_targets]: loop 0:
-    Source: 'src/verify.rs', lines 441:4-446:5 -/
+    Source: 'src/verify.rs', lines 442:4-447:5 -/
 @[rust_loop]
 def verify.distinct_targets_loop
   (facts : Slice fact.Fact) («name» : String) (n : Std.Usize) (i : Std.Usize)
@@ -1886,14 +1886,14 @@ def verify.distinct_targets_loop
 partial_fixpoint
 
 /-- [hourglass::verify::distinct_targets]:
-    Source: 'src/verify.rs', lines 438:0-448:1 -/
+    Source: 'src/verify.rs', lines 439:0-449:1 -/
 @[reducible]
 def verify.distinct_targets
   (facts : Slice fact.Fact) («name» : String) : Result Std.Usize := do
   verify.distinct_targets_loop facts «name» 0#usize 0#usize
 
 /-- [hourglass::verify::targets_fit]:
-    Source: 'src/verify.rs', lines 387:0-392:1 -/
+    Source: 'src/verify.rs', lines 388:0-393:1 -/
 def verify.targets_fit
   (e : entity.Entity) (targets : fact.Count) (f : fact.Fact) :
   Result Bool
@@ -1908,7 +1908,7 @@ def verify.targets_fit
     ok (i <= i1)
 
 /-- [hourglass::verify::holds_slot]: loop 0:
-    Source: 'src/verify.rs', lines 427:4-434:1 -/
+    Source: 'src/verify.rs', lines 428:4-435:1 -/
 @[rust_loop]
 def verify.holds_slot_loop
   («name» : String) (target : time.EntityId) (e : entity.Entity)
@@ -1939,7 +1939,7 @@ def verify.holds_slot_loop
 partial_fixpoint
 
 /-- [hourglass::verify::holds_slot]:
-    Source: 'src/verify.rs', lines 422:0-434:1 -/
+    Source: 'src/verify.rs', lines 423:0-435:1 -/
 def verify.holds_slot
   (w : world.World) (key : time.EntityId) («name» : String)
   (target : time.EntityId) :
@@ -1951,7 +1951,7 @@ def verify.holds_slot
   | some e => verify.holds_slot_loop «name» target e 0#usize
 
 /-- [hourglass::verify::holders_count]: loop 0:
-    Source: 'src/verify.rs', lines 412:4-417:5 -/
+    Source: 'src/verify.rs', lines 413:4-418:5 -/
 @[rust_loop]
 def verify.holders_count_loop
   (w : world.World) («name» : String) (target : time.EntityId)
@@ -1974,7 +1974,7 @@ def verify.holders_count_loop
 partial_fixpoint
 
 /-- [hourglass::verify::holders_count]:
-    Source: 'src/verify.rs', lines 408:0-419:1 -/
+    Source: 'src/verify.rs', lines 409:0-420:1 -/
 def verify.holders_count
   (w : world.World) («name» : String) (target : time.EntityId) :
   Result Std.Usize
@@ -1983,7 +1983,7 @@ def verify.holders_count
   verify.holders_count_loop w «name» target ids 0#usize 0#usize
 
 /-- [hourglass::verify::holders_fit]:
-    Source: 'src/verify.rs', lines 380:0-385:1 -/
+    Source: 'src/verify.rs', lines 381:0-386:1 -/
 def verify.holders_fit
   (w : world.World) (holders : fact.Count) (f : fact.Fact) : Result Bool := do
   let o ← fact.Count.limit holders
@@ -1998,7 +1998,7 @@ def verify.holders_fit
       ok (i <= i1)
 
 /-- [hourglass::verify::counts_hold]:
-    Source: 'src/verify.rs', lines 370:0-378:1 -/
+    Source: 'src/verify.rs', lines 371:0-379:1 -/
 def verify.counts_hold
   (w : world.World) (e : entity.Entity) (rules : fact.FactRules)
   (f : fact.Fact) :
@@ -2013,7 +2013,7 @@ def verify.counts_hold
     else ok false
 
 /-- [hourglass::verify::link_fits]:
-    Source: 'src/verify.rs', lines 353:0-368:1 -/
+    Source: 'src/verify.rs', lines 354:0-369:1 -/
 def verify.link_fits
   (w : world.World) (e : entity.Entity) (rules : fact.FactRules)
   (f : fact.Fact) :
@@ -2038,7 +2038,7 @@ def verify.link_fits
        | some _ => ok false
 
 /-- [hourglass::verify::value_fits]:
-    Source: 'src/verify.rs', lines 344:0-351:1 -/
+    Source: 'src/verify.rs', lines 345:0-352:1 -/
 def verify.value_fits
   (rules : fact.FactRules) (f : fact.Fact) : Result Bool := do
   let s ← fact.FactRules.shape rules
@@ -2060,7 +2060,7 @@ def world.World.impl.history
   ok self.history
 
 /-- [hourglass::verify::opened_inside]:
-    Source: 'src/verify.rs', lines 340:0-342:1 -/
+    Source: 'src/verify.rs', lines 341:0-343:1 -/
 def verify.opened_inside (w : world.World) (f : fact.Fact) : Result Bool := do
   let i := f.opened
   let i1 ← lift (UScalar.cast .Usize i)
@@ -2069,7 +2069,7 @@ def verify.opened_inside (w : world.World) (f : fact.Fact) : Result Bool := do
   ok (i1 < i2)
 
 /-- [hourglass::verify::fact_sound]:
-    Source: 'src/verify.rs', lines 322:0-338:1 -/
+    Source: 'src/verify.rs', lines 323:0-339:1 -/
 def verify.fact_sound
   (w : world.World) (e : entity.Entity) (i : Std.Usize) : Result Bool := do
   let f ←
@@ -2098,7 +2098,7 @@ def verify.fact_sound
       else ok false
 
 /-- [hourglass::verify::entity_sound]: loop 0:
-    Source: 'src/verify.rs', lines 312:4-320:1 -/
+    Source: 'src/verify.rs', lines 313:4-321:1 -/
 @[rust_loop]
 def verify.entity_sound_loop
   (w : world.World) (ei : time.EntityId) (et : entity.EntityType) (s : String)
@@ -2125,7 +2125,7 @@ def verify.entity_sound_loop
 partial_fixpoint
 
 /-- [hourglass::verify::entity_sound]:
-    Source: 'src/verify.rs', lines 300:0-320:1 -/
+    Source: 'src/verify.rs', lines 301:0-321:1 -/
 def verify.entity_sound
   (w : world.World) (created : ids.Ids Unit) (key : time.EntityId) :
   Result Bool
@@ -2146,7 +2146,7 @@ def verify.entity_sound
     else ok false
 
 /-- [hourglass::verify::all_entities_sound]: loop 0:
-    Source: 'src/verify.rs', lines 279:4-286:1 -/
+    Source: 'src/verify.rs', lines 280:4-287:1 -/
 @[rust_loop]
 def verify.all_entities_sound_loop
   (w : world.World) (created : ids.Ids Unit)
@@ -2168,14 +2168,14 @@ def verify.all_entities_sound_loop
 partial_fixpoint
 
 /-- [hourglass::verify::all_entities_sound]:
-    Source: 'src/verify.rs', lines 276:0-286:1 -/
+    Source: 'src/verify.rs', lines 277:0-287:1 -/
 def verify.all_entities_sound
   (w : world.World) (created : ids.Ids Unit) : Result Bool := do
   let ids ← world.World.entity_ids w
   verify.all_entities_sound_loop w created ids 0#usize
 
 /-- [hourglass::verify::created_once]:
-    Source: 'src/verify.rs', lines 290:0-298:1 -/
+    Source: 'src/verify.rs', lines 291:0-299:1 -/
 def verify.created_once
   (w : world.World) (created : ids.Ids Unit) (ev : event.Event) :
   Result (Bool × (ids.Ids Unit))
@@ -2199,7 +2199,7 @@ def verify.created_once
   | event.EventKind.FactEnd _ _ _ => ok (true, created)
 
 /-- [hourglass::verify::all_created_once]: loop 0:
-    Source: 'src/verify.rs', lines 267:4-274:1 -/
+    Source: 'src/verify.rs', lines 268:4-275:1 -/
 @[rust_loop]
 def verify.all_created_once_loop
   (w : world.World) (created : ids.Ids Unit) (evs : Slice event.Event)
@@ -2219,7 +2219,7 @@ def verify.all_created_once_loop
 partial_fixpoint
 
 /-- [hourglass::verify::all_created_once]:
-    Source: 'src/verify.rs', lines 264:0-274:1 -/
+    Source: 'src/verify.rs', lines 265:0-275:1 -/
 def verify.all_created_once
   (w : world.World) (created : ids.Ids Unit) :
   Result (Bool × (ids.Ids Unit))
@@ -2229,7 +2229,7 @@ def verify.all_created_once
   verify.all_created_once_loop w created evs 0#usize
 
 /-- [hourglass::verify::sound]:
-    Source: 'src/verify.rs', lines 255:0-262:1 -/
+    Source: 'src/verify.rs', lines 256:0-263:1 -/
 def verify.sound (w : world.World) : Result Bool := do
   let created ← ids.Ids.new Unit
   let (b, created1) ← verify.all_created_once w created
@@ -2238,7 +2238,7 @@ def verify.sound (w : world.World) : Result Bool := do
   else ok false
 
 /-- [hourglass::verify::ticks_rise]: loop 0:
-    Source: 'src/verify.rs', lines 244:4-252:1 -/
+    Source: 'src/verify.rs', lines 245:4-253:1 -/
 @[rust_loop]
 def verify.ticks_rise_loop
   (w : world.World) (evs : Slice event.Event) (last : time.Tick)
@@ -2258,14 +2258,14 @@ def verify.ticks_rise_loop
 partial_fixpoint
 
 /-- [hourglass::verify::ticks_rise]:
-    Source: 'src/verify.rs', lines 240:0-252:1 -/
+    Source: 'src/verify.rs', lines 241:0-253:1 -/
 def verify.ticks_rise (w : world.World) : Result Bool := do
   let eh ← world.World.impl.history w
   let evs ← event.EventHistory.events eh
   verify.ticks_rise_loop w evs 0#u64 0#usize
 
 /-- [hourglass::verify::same_slot]:
-    Source: 'src/verify.rs', lines 235:0-237:1 -/
+    Source: 'src/verify.rs', lines 236:0-238:1 -/
 def verify.same_slot
   (slot : (String × (Option Std.I64) × (Option time.EntityId) ×
   time.EventId)) (f : fact.Fact) :
@@ -2290,7 +2290,7 @@ def verify.same_slot
   else ok false
 
 /-- [hourglass::verify::same_row]: loop 0:
-    Source: 'src/verify.rs', lines 226:4-233:1 -/
+    Source: 'src/verify.rs', lines 227:4-234:1 -/
 @[rust_loop]
 def verify.same_row_loop
   (v : alloc.vec.Vec fact.Fact)
@@ -2315,7 +2315,7 @@ def verify.same_row_loop
 partial_fixpoint
 
 /-- [hourglass::verify::same_row]:
-    Source: 'src/verify.rs', lines 209:0-233:1 -/
+    Source: 'src/verify.rs', lines 210:0-234:1 -/
 def verify.same_row
   (w : world.World) (rows : ids.Ids verify.Row) (key : time.EntityId) :
   Result Bool
@@ -2358,7 +2358,7 @@ def verify.same_row
               else verify.same_row_loop e.facts row.slots 0#usize
 
 /-- [hourglass::verify::same_state]: loop 0:
-    Source: 'src/verify.rs', lines 200:4-207:1 -/
+    Source: 'src/verify.rs', lines 201:4-208:1 -/
 @[rust_loop]
 def verify.same_state_loop
   (w : world.World) (rows : ids.Ids verify.Row)
@@ -2380,7 +2380,7 @@ def verify.same_state_loop
 partial_fixpoint
 
 /-- [hourglass::verify::same_state]:
-    Source: 'src/verify.rs', lines 194:0-207:1 -/
+    Source: 'src/verify.rs', lines 195:0-208:1 -/
 def verify.same_state
   (w : world.World) (rows : ids.Ids verify.Row) : Result Bool := do
   let i ← world.World.len w
@@ -2392,7 +2392,7 @@ def verify.same_state
     verify.same_state_loop w rows ids 0#usize
 
 /-- [hourglass::verify::one_target]:
-    Source: 'src/verify.rs', lines 186:0-191:1 -/
+    Source: 'src/verify.rs', lines 187:0-192:1 -/
 def verify.one_target (w : world.World) («name» : String) : Result Bool := do
   let o ← fact.FactVocabulary.rules_key w.vocabulary «name»
   match o with
@@ -2406,7 +2406,7 @@ def verify.one_target (w : world.World) («name» : String) : Result Bool := do
         o1 (some 1#u16)
 
 /-- [hourglass::verify::update_slot]:
-    Source: 'src/verify.rs', lines 176:0-181:1 -/
+    Source: 'src/verify.rs', lines 177:0-182:1 -/
 def verify.update_slot
   (slot : (String × (Option Std.I64) × (Option time.EntityId) ×
   time.EventId)) («name» : String) (linked_to : Option time.EntityId)
@@ -2426,7 +2426,7 @@ def verify.update_slot
   else ok slot
 
 /-- [hourglass::verify::keep_slot]:
-    Source: 'src/verify.rs', lines 158:0-173:1 -/
+    Source: 'src/verify.rs', lines 159:0-174:1 -/
 def verify.keep_slot
   (kept : alloc.vec.Vec (String × (Option Std.I64) × (Option time.EntityId)
   × time.EventId))
@@ -2462,7 +2462,7 @@ def verify.keep_slot
     alloc.vec.Vec.push kept (s1, o, o1, ei)
 
 /-- [hourglass::verify::kept_slots]: loop 0:
-    Source: 'src/verify.rs', lines 150:4-153:5 -/
+    Source: 'src/verify.rs', lines 151:4-154:5 -/
 @[rust_loop]
 def verify.kept_slots_loop
   (slots : Slice (String × (Option Std.I64) × (Option time.EntityId) ×
@@ -2484,7 +2484,7 @@ def verify.kept_slots_loop
 partial_fixpoint
 
 /-- [hourglass::verify::kept_slots]:
-    Source: 'src/verify.rs', lines 142:0-155:1 -/
+    Source: 'src/verify.rs', lines 143:0-156:1 -/
 @[reducible]
 def verify.kept_slots
   (slots : Slice (String × (Option Std.I64) × (Option time.EntityId) ×
@@ -2498,7 +2498,7 @@ def verify.kept_slots
     0#usize
 
 /-- [hourglass::verify::refold_one]: loop 0:
-    Source: 'src/verify.rs', lines 119:16-122:17 -/
+    Source: 'src/verify.rs', lines 120:16-123:17 -/
 @[rust_loop]
 def verify.refold_one_loop
   (ei : time.EventId) («name» : String) (linked_to : Option time.EntityId)
@@ -2523,7 +2523,7 @@ def verify.refold_one_loop
 partial_fixpoint
 
 /-- [hourglass::verify::refold_one]:
-    Source: 'src/verify.rs', lines 68:0-137:1 -/
+    Source: 'src/verify.rs', lines 69:0-138:1 -/
 def verify.refold_one
   (w : world.World) (rows : ids.Ids verify.Row) (ev : event.Event) :
   Result (ids.Ids verify.Row)
@@ -2599,7 +2599,7 @@ def verify.refold_one
       ids.Ids.insert rows1 who { row with slots := v }
 
 /-- [hourglass::verify::refold]: loop 0:
-    Source: 'src/verify.rs', lines 61:4-64:5 -/
+    Source: 'src/verify.rs', lines 62:4-65:5 -/
 @[rust_loop]
 def verify.refold_loop
   (w : world.World) (evs : Slice event.Event) (rows : ids.Ids verify.Row)
@@ -2617,7 +2617,7 @@ def verify.refold_loop
 partial_fixpoint
 
 /-- [hourglass::verify::refold]:
-    Source: 'src/verify.rs', lines 57:0-66:1 -/
+    Source: 'src/verify.rs', lines 58:0-67:1 -/
 def verify.refold (w : world.World) : Result (ids.Ids verify.Row) := do
   let eh ← world.World.impl.history w
   let evs ← event.EventHistory.events eh
@@ -2625,7 +2625,7 @@ def verify.refold (w : world.World) : Result (ids.Ids verify.Row) := do
   verify.refold_loop w evs rows 0#usize
 
 /-- [hourglass::verify::verify]:
-    Source: 'src/verify.rs', lines 51:0-54:1
+    Source: 'src/verify.rs', lines 52:0-55:1
     Visibility: public -/
 def verify.verify (w : world.World) : Result Bool := do
   let rows ← verify.refold w

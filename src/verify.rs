@@ -3,7 +3,8 @@
 //! `verify` reads a world and answers whether it obeys every
 //! invariant of the spec. The claim is total: for every proposal,
 //! `propose` refuses, or `verify` passes on the world that `propose`
-//! leaves behind.
+//! leaves behind. The Lean theorem `every_proposed_world_verifies`
+//! proves the claim for every world that proposals build.
 //!
 //! The check shares no code path with `apply` or with the gate. It
 //! folds the history with its own writer, over its own rows, and then
