@@ -64,10 +64,10 @@
 //! never lost, and a merge of two devices ([`merge`]). The Kani
 //! harnesses prove the join laws per value: the larger number,
 //! the band, the direction, the count, and the span. `merge`
-//! applies that join name by name. Lean theorems prove two record
-//! laws for every record (same either way, self-merge is
-//! identity), and the seeded sweep in `tests/laws.rs` checks the
-//! third (same grouping) against a naive oracle. See the
+//! applies that join name by name. Lean theorems prove the three
+//! record laws for every record (same either way, same grouping,
+//! self-merge is identity). The seeded sweep in `tests/laws.rs`
+//! checks them a second time against a naive oracle. See the
 //! [`memory`] module and `lean/README.md`.
 //!
 //! # Whole numbers, everywhere

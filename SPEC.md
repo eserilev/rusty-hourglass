@@ -12,12 +12,14 @@ second time and checks twelve invariants. Sixty-three tests pass,
 and ten Kani harnesses prove the join laws per value, the direction
 law, and the band laws. `merge` applies the join name by name.
 Aeneas translates the scalar core and the record merge to Lean.
-Sixteen Lean theorems hold for every input with no bound
+Eighteen Lean theorems hold for every input with no bound
 (`lean/README.md`): the ten Kani laws, panic freedom of the join,
-and the record laws. A merge answers the same in either order, a
-merge with itself changes nothing, and an empty record changes
-nothing. The third record law, the same grouping, rides the seeded
-sweep against a naive oracle. No consumer calls the crate yet.
+and the record laws. A merge answers the same in either order, and
+it ignores the grouping. A merge with itself or with an empty
+record changes nothing. A merge of two records that fit gives a
+record that fits. The
+seeded sweep against a naive oracle stays as a second check. No
+consumer calls the crate yet.
 
 The build went past the decisions below in eleven places. The
 section "Built past the decisions" names each one. Read that
@@ -1079,8 +1081,7 @@ the poor fits too, so nobody re-litigates them.
 4. Verus or Creusot only when the shared game-server world makes a
    state divergence expensive.
 5. Aeneas, one rung at a time: the scalar core (BUILT), the record
-   merge behind the map wrapper `Names` (BUILT, except the same
-   grouping), and then the world laws (replay, rewind, and propose). `lean/README.md` holds the rungs and the
+   merge behind the map wrapper `Names` (BUILT), and then the world laws (replay, rewind, and propose). `lean/README.md` holds the rungs and the
    map of the code that does not translate yet.
 
 ## Built past the decisions

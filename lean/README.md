@@ -33,15 +33,17 @@ the function does not panic on those inputs.
 
 These laws hold for records of any size and for any schema. Before
 rung 2, a seeded sweep in `tests/laws.rs` checked them on random
-records only.
+records only. The sweep stays as a second check.
 
 | Theorem | The law |
 |---|---|
 | `merge_comm` | Two records merge to the same record in either order. |
+| `merge_assoc` | Three records merge to the same record, whichever two merge first. |
 | `merge_self` | A merge of a record with itself gives the same record, so a merge that runs twice answers what it answered once. |
 | `merge_empty` | A merge with an empty record gives the other record. |
 | `merge_spec` | When both records fit the schema, the merge answers the join of each name. When one record does not fit, the merge refuses. |
 | `check_spec` | `check` finds no fault exactly when every name of the record fits the schema. |
+| `mergeRec_fits` | A merge of two records that fit gives a record that fits. |
 
 The laws have three conditions:
 
@@ -52,9 +54,6 @@ The laws have three conditions:
    read from JSON keep this.
 3. **The two records together hold at most `usize::MAX` names.** A
    larger record does not fit in memory.
-
-Associativity is not proved yet. The seeded sweep in
-`tests/laws.rs` still checks it.
 
 ## What you trust
 
@@ -116,11 +115,7 @@ cannot select one method of an inherent impl block.
 
 ## The next rungs
 
-### Rung 2: the record merge (BUILT, except associativity)
-
-The next step is associativity. It needs one more lemma: a merged
-record fits the schema again. `join_stays_in_band` holds the core of
-that lemma.
+### Rung 2: the record merge (BUILT)
 
 Three facts about rung 2 help the next rungs:
 

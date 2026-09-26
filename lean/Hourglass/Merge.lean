@@ -538,4 +538,191 @@ theorem merge_empty (s : FactVocabulary) (a : Record)
     have hv : val a k = some x := by simp [val, hx, hp]
     simp [mergeVal, hs, hj, hv, h0, upd, hp]
 
+/-! ## The same grouping: associativity -/
+
+/-- The value fits the rules of its name: the shape, and the band. -/
+def okFor (rules : FactRules) (v : Value) : Prop :=
+  match shapeOf rules, v with
+  | .Flag _, .Flag _ => True
+  | .Number band _, .Number n => bandHolds band n = true
+  | _, _ => False
+
+theorem bandHolds_iff (band : Band) (n : Std.I64) :
+    bandHolds band n = true ↔ band.min.val ≤ n.val ∧ n.val ≤ band.max.val := by
+  simp only [bandHolds]
+  split <;> simp_all
+
+theorem okFor_of_fits {s : FactVocabulary} {r : Record} {k : String} {v : Value}
+    {rules : FactRules} {j : Join} (hf : fits s r)
+    (hv : (r : names.Names Value)[k]? = some v)
+    (hs : (s.names : names.Names FactRules)[k]? = some rules)
+    (hj : joinRes rules = .Ok j) : okFor rules v := by
+  have hk : k ∈ Std.ExtTreeMap.keys (r : names.Names Value) := by
+    rw [Std.ExtTreeMap.mem_keys, Std.ExtTreeMap.mem_iff_isSome_getElem?, hv]; rfl
+  have h := hf k hk
+  unfold nameFault at h
+  simp only [hv, hs, hj] at h
+  unfold okFor
+  cases hsh : shapeOf rules <;> cases v <;> simp_all
+
+theorem nameFault_of_okFor {s : FactVocabulary} {r : Record} {k : String} {v : Value}
+    {rules : FactRules} {j : Join}
+    (hv : (r : names.Names Value)[k]? = some v)
+    (hs : (s.names : names.Names FactRules)[k]? = some rules)
+    (hj : joinRes rules = .Ok j) (ho : okFor rules v) : nameFault s r k = none := by
+  unfold nameFault
+  simp only [hv, hs, hj]
+  unfold okFor at ho
+  split at ho <;> simp_all
+
+/-- A value that a merge reads: it fits its rules, and it is present. -/
+def good (rules : FactRules) (v : Value) : Prop := okFor rules v ∧ v.isPresent
+
+/-- The join keeps a value good. -/
+theorem joinVal_good {rules : FactRules} {j : Join} {x y : Value}
+    (hj : joinRes rules = .Ok j) (hx : good rules x) (hy : good rules y) :
+    good rules (joinVal j x y) := by
+  rcases rules with ⟨sh⟩ | ⟨sh, _, _, _⟩
+  · rcases sh with ⟨d⟩ | ⟨band, d⟩ <;> cases d <;> simp [joinRes] at hj <;> subst hj
+    · simp [good, okFor, joinVal, shapeOf, memory.Value.isPresent]
+    · cases x <;> cases y <;> simp_all [good, okFor, joinVal, shapeOf, bandHolds_iff,
+        memory.Value.isPresent]
+    · cases x <;> cases y <;> simp_all [good, okFor, joinVal, shapeOf, bandHolds_iff,
+        memory.Value.isPresent]
+  · simp [joinRes] at hj
+
+/-- The join groups either way. -/
+theorem joinVal_assoc {rules : FactRules} {j : Join} {x y z : Value}
+    (hj : joinRes rules = .Ok j) (hx : good rules x) (hy : good rules y) (hz : good rules z) :
+    joinVal j (joinVal j x y) z = joinVal j x (joinVal j y z) := by
+  rcases rules with ⟨sh⟩ | ⟨sh, _, _, _⟩
+  · rcases sh with ⟨d⟩ | ⟨band, d⟩ <;> cases d <;> simp [joinRes] at hj <;> subst hj
+    · rfl
+    · cases x <;> cases y <;> cases z <;> simp_all [good, okFor, shapeOf, joinVal]
+      apply i64_ext; simp
+    · cases x <;> cases y <;> cases z <;> simp_all [good, okFor, shapeOf, joinVal]
+      apply i64_ext; simp
+  · simp [joinRes] at hj
+
+/-- The merge of one name, from the two values it reads. -/
+def comb (j : Join) : Option Value → Option Value → Option Value
+  | none, none => none
+  | none, some y => some y
+  | some x, none => some x
+  | some x, some y => some (joinVal j x y)
+
+def allGood (rules : FactRules) (o : Option Value) : Prop := ∀ v, o = some v → good rules v
+
+theorem comb_good {rules : FactRules} {j : Join} {A B : Option Value}
+    (hj : joinRes rules = .Ok j) (hA : allGood rules A) (hB : allGood rules B) :
+    allGood rules (comb j A B) := by
+  intro v hv
+  cases A <;> cases B <;> simp [comb] at hv <;> subst hv
+  · exact hB _ rfl
+  · exact hA _ rfl
+  · exact joinVal_good hj (hA _ rfl) (hB _ rfl)
+
+theorem comb_assoc {rules : FactRules} {j : Join} {A B C : Option Value}
+    (hj : joinRes rules = .Ok j)
+    (hA : allGood rules A) (hB : allGood rules B) (hC : allGood rules C) :
+    comb j (comb j A B) C = comb j A (comb j B C) := by
+  cases A <;> cases B <;> cases C <;> simp [comb]
+  exact joinVal_assoc hj (hA _ rfl) (hB _ rfl) (hC _ rfl)
+
+theorem upd_good {rules : FactRules} {o : Option Value} (h : allGood rules o) :
+    upd o none = o := by
+  cases o with
+  | none => rfl
+  | some v => simp [upd, (h v rfl).2]
+
+theorem mergeVal_rules {s : FactVocabulary} {a b : Record} {k : String}
+    {rules : FactRules} {j : Join}
+    (hs : (s.names : names.Names FactRules)[k]? = some rules)
+    (hj : joinRes rules = .Ok j) :
+    mergeVal s a b k = comb j (val a k) (val b k) := by
+  simp only [mergeVal, hs, hj]
+  cases val a k <;> cases val b k <;> rfl
+
+theorem val_good {s : FactVocabulary} {r : Record} {k : String}
+    {rules : FactRules} {j : Join} (hf : fits s r)
+    (hs : (s.names : names.Names FactRules)[k]? = some rules)
+    (hj : joinRes rules = .Ok j) : allGood rules (val r k) := by
+  intro v hv
+  obtain ⟨hr, hp⟩ := val_some hv
+  exact ⟨okFor_of_fits hf hr hs hj, hp⟩
+
+theorem val_mergeRec (s : FactVocabulary) (a b : Record) (k : String) :
+    val (mergeRec s a b) k = upd (mergeVal s a b k) none := by
+  unfold val
+  rw [mergeRec_get]
+  cases h : mergeVal s a b k with
+  | none => rfl
+  | some v => by_cases hp : v.isPresent <;> simp [upd, hp]
+
+/-- A merge of two records that fit gives a record that fits. -/
+theorem mergeRec_fits {s : FactVocabulary} {a b : Record} (ha : fits s a) (hb : fits s b) :
+    fits s (mergeRec s a b) := by
+  intro k _
+  cases hv : (mergeRec s a b : names.Names Value)[k]? with
+  | none => simp [nameFault, hv]
+  | some v =>
+    have hv' := hv
+    rw [mergeRec_get] at hv
+    cases hs : (s.names : names.Names FactRules)[k]? with
+    | none => simp [mergeVal, hs, upd] at hv
+    | some rules =>
+      cases hj : joinRes rules with
+      | Err _ => simp [mergeVal, hs, hj, upd] at hv
+      | Ok j =>
+        have hc := comb_good hj (val_good ha hs hj) (val_good hb hs hj)
+        rw [mergeVal_rules hs hj, upd_good hc] at hv
+        exact nameFault_of_okFor hv' hs hj (hc v hv).1
+
+/-- A merge holds no more names than its two records together. -/
+theorem mergeRec_size (s : FactVocabulary) (a b : Record) :
+    (mergeRec s a b : names.Names Value).size ≤
+      (a : names.Names Value).size + (b : names.Names Value).size := by
+  rw [← Std.ExtTreeMap.length_keys, ← Std.ExtTreeMap.length_keys,
+    ← Std.ExtTreeMap.length_keys, ← List.length_append]
+  apply List.Subperm.length_le
+  apply List.Nodup.subperm Std.ExtTreeMap.nodup_keys
+  intro k hk
+  rw [Std.ExtTreeMap.mem_keys, Std.ExtTreeMap.mem_iff_isSome_getElem?, mergeRec_get] at hk
+  rw [List.mem_append, Std.ExtTreeMap.mem_keys, Std.ExtTreeMap.mem_keys]
+  by_contra hn
+  simp only [not_or] at hn
+  rw [mergeVal_none s a b k (val_none a k hn.1) (val_none b k hn.2)] at hk
+  simp [upd] at hk
+
+/-- THE MERGE IGNORES THE GROUPING. Three records that fit merge to
+    the same record, whichever two merge first. -/
+theorem merge_assoc (s : FactVocabulary) (a b c : Record)
+    (h : (a : names.Names Value).size + (b : names.Names Value).size +
+      (c : names.Names Value).size ≤ Usize.max)
+    (ha : fits s a) (hb : fits s b) (hc : fits s c) :
+    ∃ ab bc r, merge s a b = ok (.Ok ab) ∧ merge s ab c = ok (.Ok r) ∧
+      merge s b c = ok (.Ok bc) ∧ merge s a bc = ok (.Ok r) := by
+  have hab_size := mergeRec_size s a b
+  have hbc_size := mergeRec_size s b c
+  refine ⟨mergeRec s a b, mergeRec s b c, mergeRec s (mergeRec s a b) c,
+    merge_ok_of_spec (by omega) ha hb,
+    merge_ok_of_spec (by omega) (mergeRec_fits ha hb) hc,
+    merge_ok_of_spec (by omega) hb hc, ?_⟩
+  rw [merge_ok_of_spec (by omega) ha (mergeRec_fits hb hc)]
+  congr 2
+  apply Std.ExtTreeMap.ext_getElem?
+  intro k
+  rw [mergeRec_get, mergeRec_get]
+  cases hs : (s.names : names.Names FactRules)[k]? with
+  | none => simp [mergeVal, hs]
+  | some rules =>
+    cases hj : joinRes rules with
+    | Err _ => simp [mergeVal, hs, hj]
+    | Ok j =>
+      rw [mergeVal_rules hs hj, mergeVal_rules hs hj, val_mergeRec, val_mergeRec,
+        mergeVal_rules hs hj, mergeVal_rules hs hj,
+        upd_good (comb_good hj (val_good ha hs hj) (val_good hb hs hj)),
+        upd_good (comb_good hj (val_good hb hs hj) (val_good hc hs hj)),
+        comb_assoc hj (val_good ha hs hj) (val_good hb hs hj) (val_good hc hs hj)]
+
 end hourglass
