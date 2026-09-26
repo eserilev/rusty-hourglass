@@ -69,8 +69,7 @@ The laws have three conditions:
 | `reach_propose` | So a world that any mix of proposals and commits built also replays exactly. |
 | `replay_one_of_commit` | One step of replay on the event of a commit gives the world of that commit. |
 
-The laws about `propose` hold for every answer of the world queries
-of the gate (see rung 4b). `apply` receives only the entity map and
+`apply` receives only the entity map and
 the vocabulary, so it cannot touch the history or the tick.
 
 ## What is proved: rung 4a, the rules inside `apply`
@@ -97,12 +96,10 @@ alone.
 | `apply_in_band` | `apply` keeps every value in its band, for a clean event. |
 | `reachP_reach` | A world that proposals build is also a world that commits build. So the laws of rungs 3 and 4a hold for it too. |
 
-`validate` translates in full, except the module `validate::queries`.
-Each query only reads the world and answers a value, for example a
-bool or the faults of the type check. No query touches the list of
-faults, and each fault only adds to the list. So "no fault at the
-end" means "no band fault", for every answer of the queries. The
-pins name the queries that each law reads.
+`validate` translates in full. The one exception is `blank`, the test
+for a name with only white space. Aeneas has no `trim`, so the model
+gives `blank` a body (see "What you trust"). Each fault only adds to
+the list. So "no fault at the end" means "no band fault".
 
 ## What is proved: rung 5, the direction law
 
@@ -165,8 +162,12 @@ other rules for the name.
    - `String` equality and `Vec::remove`.
    - `String` as `&str`, and `str` equality. The model of a `str` is
      its UTF-8 bytes, and the compare is on the bytes, as in Rust.
-   - The map inside `FactRules`. No law reads it, so its model is a
-     plain list.
+   - The type map inside `FactRules`. Its model is the list of its
+     entries in key order, and `get` finds the first equal key.
+   - The derives of `EntityType`: the compares follow the order of
+     the declaration.
+   - `blank`: every char is Unicode `White_Space`, the set of
+     `char::is_whitespace`.
    - `Ids<V>` (`src/ids.rs`), the entity map of the world. Its model
      is `Std.ExtTreeMap Nat V compare`, keyed by the number of the
      id.
@@ -174,22 +175,20 @@ other rules for the name.
      key. Its model is `Std.ExtTreeMap String V compare`, the
      verified tree map of the Lean standard library. Each operation
      is the `ExtTreeMap` operation of the same name.
-3. **The contract tests of the maps.** The tests in `src/names.rs`
-   and `src/ids.rs` check the laws of each map model. They run
-   against the real `BTreeMap` on random input. One test checks that Rust and
-   Lean order strings the same way.
+3. **The contract tests of the models.** The tests in
+   `src/names.rs`, `src/ids.rs`, and `src/fact.rs` check the laws of
+   each map model against the real `BTreeMap` on random input. One
+   test checks that Rust and Lean order strings the same way. The
+   tests in `src/validate.rs` check the model of `blank`: one walks
+   every char, and one checks random names.
 4. **The three standard axioms of Lean.** `Hourglass/Trust.lean`
    pins the axioms of each theorem with `#guard_msgs`. A `sorry` or
    a new axiom fails the build. The model files hold definitions
-   only, with one exception: the three world queries of the gate
-   (`validate::queries`). They are axioms with no body, and only the
-   pins of the laws that read `validate` name them. An axiom that
-   only names a function of an inhabited type cannot make the logic
-   inconsistent.
+   only, and no law depends on an axiom of the crate.
 5. **One native check.** Aeneas writes the constant `LOCATED_IN`
    with `toStr`, and `toStr` proves that the string fits a `u32`
-   length with `decide +native`. So the pins of the rung 7 laws
-   name `fact.LOCATED_IN._native.decide.ax_1`. It trusts the Lean
+   length with `decide +native`. So the pins of the laws that read
+   `validate` name `fact.LOCATED_IN._native.decide.ax_1`. It trusts the Lean
    compiler to count the ten bytes of `located_in`.
 
 ## How to run
@@ -310,13 +309,20 @@ world with no ring, a walk that meets the entity meets it within
 `is_located_in` compares two `str` values, because Aeneas cannot
 translate a compare of `String` with `&str`.
 
+### Rung 8: the last queries (BUILT)
+
+The type check `types_fit` and the history walk `ever_ended`
+translate. `ever_ended` is an index loop on `EventHistory`, and
+`type_allowed` reads the type map with `get` and `is_empty`. `blank`
+keeps a model body and two contract tests. No law of the gate
+depends on an axiom of the crate now.
+
 What waits: no law reads the remaining code yet.
 
 | Group | Where | The fix |
 |---|---|---|
 | A `&'static str` label, and the text of a rejection | `EntityType::label`, `EventKind` label, `Direction::label`, `Shape::label`, `reject.rs` lines 221 and 326 | None. These are text, and no law reads them. Keep them out of the marks. |
-| A `&str` operation | `queries::blank` (`trim`) | A model for `trim` on `Str`. |
-| An iterator chain with a closure | `Entity::fact`, `World::contents`, `holders_of`, `targets_of`, `facts_linked_to`, `ever_ended`, `memory_names` | Write each one as an explicit loop over the wrapper walk. |
+| An iterator chain with a closure | `Entity::fact`, `World::contents`, `holders_of`, `targets_of`, `facts_linked_to`, `memory_names` | Write each one as an explicit loop over the wrapper walk. |
 | A closure that captures `&mut self` | `World::propose_all` | A loop that calls `propose`. |
 | A return inside a nested loop | `verify::same_state`, `verify::sound` | Move the inner loop into a helper function that returns a flag. |
 

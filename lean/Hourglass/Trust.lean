@@ -98,9 +98,6 @@ open hourglass
 /-- info: 'hourglass.propose_ok' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.blank,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms propose_ok
@@ -108,9 +105,6 @@ open hourglass
 /-- info: 'hourglass.propose_err' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.blank,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms propose_err
@@ -118,9 +112,6 @@ open hourglass
 /-- info: 'hourglass.reach_propose' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.blank,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms reach_propose
@@ -152,8 +143,6 @@ open hourglass
 /-- info: 'hourglass.start_clean' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms start_clean
@@ -165,9 +154,6 @@ open hourglass
 /-- info: 'hourglass.validate_clean' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.blank,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms validate_clean
@@ -179,9 +165,6 @@ open hourglass
 /-- info: 'hourglass.reachP_reach' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.blank,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms reachP_reach
@@ -189,9 +172,6 @@ open hourglass
 /-- info: 'hourglass.every_proposed_world_in_band' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.blank,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms every_proposed_world_in_band
@@ -199,8 +179,6 @@ open hourglass
 /-- info: 'hourglass.start_dir' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms start_dir
@@ -216,9 +194,6 @@ open hourglass
 /-- info: 'hourglass.validate_dir' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.blank,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms validate_dir
@@ -230,9 +205,6 @@ open hourglass
 /-- info: 'hourglass.up_never_falls' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.blank,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms up_never_falls
@@ -248,9 +220,6 @@ open hourglass
 /-- info: 'hourglass.every_proposed_world_targets' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.blank,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms every_proposed_world_targets
@@ -266,9 +235,6 @@ open hourglass
 /-- info: 'hourglass.every_proposed_world_holders' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.blank,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms every_proposed_world_holders
@@ -287,8 +253,6 @@ open hourglass
 /-- info: 'hourglass.start_cycle_clean' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms start_cycle_clean
@@ -304,9 +268,6 @@ open hourglass
 /-- info: 'hourglass.every_proposed_world_acyclic' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.blank,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms every_proposed_world_acyclic
@@ -314,9 +275,6 @@ open hourglass
 /-- info: 'hourglass.no_place_inside_itself' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- validate.queries.blank,
- validate.queries.ended_before,
- validate.queries.type_faults,
  hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
 #guard_msgs in
 #print axioms no_place_inside_itself

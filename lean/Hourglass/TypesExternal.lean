@@ -13,8 +13,8 @@ set_option linter.style.setOption false
 set_option linter.style.longLine false
 
 /-- The map in `FactRules::Linked`, from a holder type to its target
-    types. No law reads it, and the translated code calls no function
-    on it. Any type serves, and a list keeps the model free of axioms. -/
+    types: the list of its entries in key order. The test
+    `type_allowed_follows_the_model` in `src/fact.rs` checks the model. -/
 @[rust_type "alloc::collections::btree::map::BTreeMap"]
 def alloc.collections.btree.map.BTreeMap (K : Type) (V : Type) (_A : Type) : Type :=
   List (K × V)

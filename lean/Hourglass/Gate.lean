@@ -1,8 +1,7 @@
 -- The rung 4b laws: the rules inside `validate`.
 --
--- `validate` translates in full, except its world queries
--- (FunsExternal.lean). The queries only answer values, so the laws hold
--- for every answer they give.
+-- `validate` translates in full. The one query with a model body,
+-- `blank`, is in FunsExternal.lean.
 import Hourglass.Apply
 import Hourglass.Merge
 
@@ -29,39 +28,6 @@ theorem grows_push {o x : alloc.vec.Vec reject.Rejection} {y : reject.Rejection}
   unfold Grows; intro r hr
   rw [push_val_any hr]
   exact h.trans (List.prefix_append _ _)
-
-theorem push_all_loop_prefix (s : Slice reject.Rejection) :
-    ∀ (n : Nat) (x r : alloc.vec.Vec reject.Rejection) (i : Usize), s.length - i.val = n →
-      validate.push_all_loop x s i = ok r → x.val <+: r.val := by
-  intro n
-  induction n with
-  | zero =>
-    intro x r i hn h
-    rw [validate.push_all_loop] at h
-    have hge : ¬ i < Slice.len s := by scalar_tac
-    simp only [hge, if_false, ok.injEq] at h
-    subst h; exact List.prefix_refl _
-  | succ n ih =>
-    intro x r i hn h
-    rw [validate.push_all_loop] at h
-    have hc : i < Slice.len s := by scalar_tac
-    simp only [hc, if_true] at h
-    rw [bind_eq_ok] at h; obtain ⟨_, _, h⟩ := h
-    rw [bind_eq_ok] at h; obtain ⟨_, _, h⟩ := h
-    rw [bind_eq_ok] at h; obtain ⟨x1, hx1, h⟩ := h
-    rw [bind_eq_ok] at h; obtain ⟨i2, hi2, h⟩ := h
-    have hv := push_val_any hx1
-    obtain ⟨_, hadd, hval⟩ := (Aeneas.Std.WP.spec_equiv_exists _ _).1
-      (UScalar.add_spec (x := i) (y := 1#usize) (by scalar_tac))
-    rw [hadd] at hi2; simp only [ok.injEq] at hi2; subst hi2
-    have := ih x1 r _ (by scalar_tac) h
-    rw [hv] at this
-    exact (List.prefix_append _ _).trans this
-
-theorem grows_push_all {o x : alloc.vec.Vec reject.Rejection} {s : Slice reject.Rejection}
-    (h : o.val <+: x.val) : Grows o (validate.push_all x s) := by
-  unfold Grows; intro r hr
-  exact h.trans (push_all_loop_prefix s _ x r 0#usize rfl hr)
 
 theorem grows_target_fits {o x : alloc.vec.Vec reject.Rejection} {n : String}
     {rules : FactRules} {l : Option time.EntityId} (h : o.val <+: x.val) :
@@ -100,11 +66,16 @@ macro_rules
   | `(tactic| grows0) => `(tactic| first
     | (apply grows_ok; assumption)
     | (apply grows_push; assumption)
-    | (apply grows_push_all; assumption)
     | (apply grows_target_fits; assumption)
     | (refine grows_bind_vec (by grows0) (fun _ _ => by grows0))
     | (refine grows_bind (fun _ => by grows0))
     | (split <;> grows0))
+
+theorem grows_types_fit {o x : alloc.vec.Vec reject.Rejection} {w : World} {who : time.EntityId}
+    {n : String} {rules : FactRules} {t : time.EntityId} (h : o.val <+: x.val) :
+    Grows o (validate.types_fit w who n rules t x) := by
+  unfold validate.types_fit
+  grows0
 
 theorem grows_counts_fit {o x : alloc.vec.Vec reject.Rejection} {w : World} {who : time.EntityId}
     {n : String} {rules : FactRules} {t : time.EntityId} (h : o.val <+: x.val) :
@@ -112,14 +83,14 @@ theorem grows_counts_fit {o x : alloc.vec.Vec reject.Rejection} {w : World} {who
   unfold validate.counts_fit
   grows0
 
-/-- `grows0`, and the count check of the gate. -/
+/-- `grows0`, and the type check and the count check of the gate. -/
 syntax "grows" : tactic
 macro_rules
   | `(tactic| grows) => `(tactic| first
     | (apply grows_ok; assumption)
     | (apply grows_push; assumption)
-    | (apply grows_push_all; assumption)
     | (apply grows_target_fits; assumption)
+    | (apply grows_types_fit; assumption)
     | (apply grows_counts_fit; assumption)
     | (refine grows_bind_vec (by grows) (fun _ _ => by grows))
     | (refine grows_bind (fun _ => by grows))

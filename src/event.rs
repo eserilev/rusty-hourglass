@@ -10,8 +10,21 @@
 //! replays it, which is why `truncate` exists at all.
 
 use crate::entity::EntityType;
+use crate::fact::same_str;
 use crate::time::{EntityId, EventId, Tick};
 use serde::{Deserialize, Serialize};
+
+/// Does this event end a fact of the name on the entity?
+fn ends_slot(ev: &Event, entity: EntityId, name: &str) -> bool {
+    match &ev.kind {
+        EventKind::FactEnd {
+            entity: who,
+            name: what,
+            ..
+        } => *who == entity && same_str(what, name),
+        _ => false,
+    }
+}
 
 /// One entry in the history.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -104,6 +117,18 @@ pub struct EventHistory(Vec<Event>);
 impl EventHistory {
     pub fn new() -> Self {
         EventHistory(Vec::new())
+    }
+
+    /// Did a fact of the name on the entity ever end?
+    pub(crate) fn ever_ended(&self, entity: EntityId, name: &str) -> bool {
+        let mut i = 0;
+        while i < self.0.len() {
+            if ends_slot(&self.0[i], entity, name) {
+                return true;
+            }
+            i += 1;
+        }
+        false
     }
 
     /// The only way in. The history hands out the id it gave.

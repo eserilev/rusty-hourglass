@@ -389,15 +389,16 @@ impl World {
     /// Did this slot ever leave the state? The answer lives in
     /// the history, because the state holds the present alone.
     pub fn ever_ended(&self, entity: EntityId, name: &str) -> bool {
-        self.history.iter().any(|e| {
-            matches!(&e.kind, EventKind::FactEnd { entity: who, name: what, .. }
-                if *who == entity && what == name)
-        })
+        self.history.ever_ended(entity, name)
     }
 
     /// The type of one entity, for the type map of a link.
+    #[allow(clippy::manual_map)]
     pub fn type_of(&self, id: EntityId) -> Option<EntityType> {
-        self.entities.get(id).map(|e| e.entity_type)
+        match self.entities.get(id) {
+            Some(e) => Some(e.entity_type),
+            None => None,
+        }
     }
 
     /// The place a name reserves. `located_in` is the one name

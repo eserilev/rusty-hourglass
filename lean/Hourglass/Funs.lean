@@ -24,6 +24,14 @@ noncomputable section
 
 namespace hourglass
 
+/-- Trait implementation: [core::borrow::{impl core::borrow::Borrow<T> for T}]
+    Source: '/rustc/library/core/src/borrow.rs', lines 212:0-212:37
+    Name pattern: [core::borrow::Borrow<@T, @T>] -/
+@[reducible, rust_trait_impl "core::borrow::Borrow<@T, @T>"]
+def core.borrow.Borrow.Blanket (T : Type) : core.borrow.Borrow T T := {
+  borrow := core.borrow.Borrow.Blanket.borrow
+}
+
 /-- Trait implementation: [alloc::alloc::{impl core::alloc::AllocatorClone for alloc::alloc::Global}]
     Source: '/rustc/library/alloc/src/alloc.rs', lines 62:0-62:50
     Name pattern: [core::alloc::AllocatorClone<alloc::alloc::Global>] -/
@@ -49,6 +57,78 @@ def entity.EntityType.Insts.CoreCloneClone : core.clone.Clone entity.EntityType
   clone := entity.EntityType.Insts.CoreCloneClone.clone
 }
 
+/-- [hourglass::entity::{impl core::cmp::PartialEq<hourglass::entity::EntityType> for hourglass::entity::EntityType}::eq]:
+    Source: 'src/entity.rs', lines 18:29-18:38
+    Visibility: public -/
+def entity.EntityType.Insts.CoreCmpPartialEqEntityType.eq
+  (self : entity.EntityType) (other : entity.EntityType) : Result Bool := do
+  let self1 := read_discriminant self
+  let other1 := read_discriminant other
+  ok (self1 = other1)
+
+/-- Trait implementation: [hourglass::entity::{impl core::cmp::PartialEq<hourglass::entity::EntityType> for hourglass::entity::EntityType}]
+    Source: 'src/entity.rs', lines 18:29-18:38 -/
+@[reducible]
+def entity.EntityType.Insts.CoreCmpPartialEqEntityType : core.cmp.PartialEq
+  entity.EntityType entity.EntityType := {
+  eq := entity.EntityType.Insts.CoreCmpPartialEqEntityType.eq
+  ne := entity.EntityType.Insts.CoreCmpPartialEqEntityType.ne
+}
+
+/-- Trait implementation: [hourglass::entity::{impl core::cmp::Eq for hourglass::entity::EntityType}]
+    Source: 'src/entity.rs', lines 18:40-18:42 -/
+@[reducible]
+def entity.EntityType.Insts.CoreCmpEq : core.cmp.Eq entity.EntityType := {
+  partialEqInst := entity.EntityType.Insts.CoreCmpPartialEqEntityType
+  assert_fields_are_eq :=
+    entity.EntityType.Insts.CoreCmpEq.assert_fields_are_eq
+}
+
+/-- [hourglass::entity::{impl core::cmp::Ord for hourglass::entity::EntityType}::cmp]:
+    Source: 'src/entity.rs', lines 18:56-18:59
+    Visibility: public -/
+def entity.EntityType.Insts.CoreCmpOrd.cmp
+  (self : entity.EntityType) (other : entity.EntityType) :
+  Result Ordering
+  := do
+  let self1 := read_discriminant self
+  let other1 := read_discriminant other
+  ok (core.cmp.impls.OrdIsize.cmp self1 other1)
+
+/-- [hourglass::entity::{impl core::cmp::PartialOrd<hourglass::entity::EntityType> for hourglass::entity::EntityType}::partial_cmp]:
+    Source: 'src/entity.rs', lines 18:44-18:54
+    Visibility: public -/
+def entity.EntityType.Insts.CoreCmpPartialOrdEntityType.partial_cmp
+  (self : entity.EntityType) (other : entity.EntityType) :
+  Result (Option Ordering)
+  := do
+  let o ← entity.EntityType.Insts.CoreCmpOrd.cmp self other
+  ok (some o)
+
+/-- Trait implementation: [hourglass::entity::{impl core::cmp::PartialOrd<hourglass::entity::EntityType> for hourglass::entity::EntityType}]
+    Source: 'src/entity.rs', lines 18:44-18:54 -/
+@[reducible]
+def entity.EntityType.Insts.CoreCmpPartialOrdEntityType : core.cmp.PartialOrd
+  entity.EntityType entity.EntityType := {
+  partialEqInst := entity.EntityType.Insts.CoreCmpPartialEqEntityType
+  partial_cmp :=
+    entity.EntityType.Insts.CoreCmpPartialOrdEntityType.partial_cmp
+  lt := entity.EntityType.Insts.CoreCmpPartialOrdEntityType.lt
+  gt := entity.EntityType.Insts.CoreCmpPartialOrdEntityType.gt
+  ge := entity.EntityType.Insts.CoreCmpPartialOrdEntityType.ge
+}
+
+/-- Trait implementation: [hourglass::entity::{impl core::cmp::Ord for hourglass::entity::EntityType}]
+    Source: 'src/entity.rs', lines 18:56-18:59 -/
+@[reducible]
+def entity.EntityType.Insts.CoreCmpOrd : core.cmp.Ord entity.EntityType := {
+  eqInst := entity.EntityType.Insts.CoreCmpEq
+  partialOrdInst := entity.EntityType.Insts.CoreCmpPartialOrdEntityType
+  cmp := entity.EntityType.Insts.CoreCmpOrd.cmp
+  max := entity.EntityType.Insts.CoreCmpOrd.max
+  min := entity.EntityType.Insts.CoreCmpOrd.min
+}
+
 /-- [hourglass::time::{hourglass::time::TimeSpan}::ended]:
     Source: 'src/time.rs', lines 77:4-79:5
     Visibility: public -/
@@ -61,6 +141,11 @@ def time.TimeSpan.ended (self : time.TimeSpan) : Result Bool := do
 def entity.Entity.gone (self : entity.Entity) : Result Bool := do
   time.TimeSpan.ended self.existence
 
+/-- [hourglass::fact::same_str]:
+    Source: 'src/fact.rs', lines 42:0-44:1 -/
+def fact.same_str (a : Str) (b : Str) : Result Bool := do
+  Str.Insts.CoreCmpPartialEqStr.eq a b
+
 /-- [hourglass::fact::LOCATED_IN]
     Source: 'src/fact.rs', lines 32:0-32:42
     Visibility: public -/
@@ -69,7 +154,7 @@ def entity.Entity.gone (self : entity.Entity) : Result Bool := do
 /-- [hourglass::fact::is_located_in]:
     Source: 'src/fact.rs', lines 36:0-38:1 -/
 def fact.is_located_in («name» : Str) : Result Bool := do
-  Str.Insts.CoreCmpPartialEqStr.eq «name» fact.LOCATED_IN
+  fact.same_str «name» fact.LOCATED_IN
 
 /-- [hourglass::entity::{hourglass::entity::Entity}::location]: loop 0:
     Source: 'src/entity.rs', lines 100:8-107:5
@@ -100,6 +185,32 @@ def entity.Entity.location
   (self : entity.Entity) : Result (Option time.EntityId) := do
   entity.Entity.location_loop self 0#usize
 
+/-- [hourglass::time::{impl core::cmp::PartialEq<hourglass::time::EntityId> for hourglass::time::EntityId}::eq]:
+    Source: 'src/time.rs', lines 13:24-13:33
+    Visibility: public -/
+def time.EntityId.Insts.CoreCmpPartialEqEntityId.eq
+  (self : time.EntityId) (other : time.EntityId) : Result Bool := do
+  ok (self = other)
+
+/-- [hourglass::event::ends_slot]:
+    Source: 'src/event.rs', lines 18:0-27:1 -/
+def event.ends_slot
+  (ev : event.Event) (entity : time.EntityId) («name» : Str) :
+  Result Bool
+  := do
+  match ev.kind with
+  | event.EventKind.EntityCreated _ _ _ => ok false
+  | event.EventKind.EntityDestroyed _ => ok false
+  | event.EventKind.FactStart _ _ _ _ => ok false
+  | event.EventKind.FactUpdate _ _ _ _ _ => ok false
+  | event.EventKind.FactEnd who what _ =>
+    let b ← time.EntityId.Insts.CoreCmpPartialEqEntityId.eq who entity
+    if b
+    then
+      let s ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref what
+      fact.same_str s «name»
+    else ok false
+
 /-- [hourglass::time::{impl core::clone::Clone for hourglass::time::EntityId}::clone]:
     Source: 'src/time.rs', lines 13:4-13:9
     Visibility: public -/
@@ -115,7 +226,7 @@ def time.EntityId.Insts.CoreCloneClone : core.clone.Clone time.EntityId := {
 }
 
 /-- [hourglass::event::{impl core::clone::Clone for hourglass::event::EventKind}::clone]:
-    Source: 'src/event.rs', lines 30:9-30:14
+    Source: 'src/event.rs', lines 43:9-43:14
     Visibility: public -/
 def event.EventKind.Insts.CoreCloneClone.clone
   (self : event.EventKind) : Result event.EventKind := do
@@ -156,7 +267,7 @@ def event.EventKind.Insts.CoreCloneClone.clone
     ok (event.EventKind.FactEnd ei s o)
 
 /-- [hourglass::event::{impl core::default::Default for hourglass::event::EventHistory}::default]:
-    Source: 'src/event.rs', lines 100:23-100:30
+    Source: 'src/event.rs', lines 113:23-113:30
     Visibility: public -/
 def event.EventHistory.Insts.CoreDefaultDefault.default
   : Result event.EventHistory := do
@@ -164,7 +275,7 @@ def event.EventHistory.Insts.CoreDefaultDefault.default
   ok v
 
 /-- Trait implementation: [hourglass::event::{impl core::default::Default for hourglass::event::EventHistory}]
-    Source: 'src/event.rs', lines 100:23-100:30 -/
+    Source: 'src/event.rs', lines 113:23-113:30 -/
 @[reducible]
 def event.EventHistory.Insts.CoreDefaultDefault : core.default.Default
   event.EventHistory := {
@@ -172,13 +283,45 @@ def event.EventHistory.Insts.CoreDefaultDefault : core.default.Default
 }
 
 /-- [hourglass::event::{hourglass::event::EventHistory}::new]:
-    Source: 'src/event.rs', lines 105:4-107:5
+    Source: 'src/event.rs', lines 118:4-120:5
     Visibility: public -/
 def event.EventHistory.new : Result event.EventHistory := do
   ok (alloc.vec.Vec.new event.Event)
 
+/-- [hourglass::event::{hourglass::event::EventHistory}::ever_ended]: loop 0:
+    Source: 'src/event.rs', lines 125:8-132:5 -/
+@[rust_loop]
+def event.EventHistory.ever_ended_loop
+  (self : event.EventHistory) (entity : time.EntityId) («name» : Str)
+  (i : Std.Usize) :
+  Result Bool
+  := do
+  let i1 := alloc.vec.Vec.len self
+  if i < i1
+  then
+    let e ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice event.Event)
+        self i
+    let b ← event.ends_slot e entity «name»
+    if b
+    then ok true
+    else
+      let i2 ← i + 1#usize
+      event.EventHistory.ever_ended_loop self entity «name» i2
+  else ok false
+partial_fixpoint
+
+/-- [hourglass::event::{hourglass::event::EventHistory}::ever_ended]:
+    Source: 'src/event.rs', lines 123:4-132:5 -/
+@[reducible]
+def event.EventHistory.ever_ended
+  (self : event.EventHistory) (entity : time.EntityId) («name» : Str) :
+  Result Bool
+  := do
+  event.EventHistory.ever_ended_loop self entity «name» 0#usize
+
 /-- [hourglass::event::{hourglass::event::EventHistory}::next_id]:
-    Source: 'src/event.rs', lines 137:4-139:5
+    Source: 'src/event.rs', lines 162:4-164:5
     Visibility: public -/
 def event.EventHistory.next_id
   (self : event.EventHistory) : Result time.EventId := do
@@ -187,7 +330,7 @@ def event.EventHistory.next_id
   ok i1
 
 /-- [hourglass::event::{hourglass::event::EventHistory}::push]:
-    Source: 'src/event.rs', lines 110:4-114:5
+    Source: 'src/event.rs', lines 135:4-139:5
     Visibility: public -/
 def event.EventHistory.push
   (self : event.EventHistory) (tick : time.Tick) (kind : event.EventKind) :
@@ -198,7 +341,7 @@ def event.EventHistory.push
   ok (id, v)
 
 /-- [hourglass::event::{hourglass::event::EventHistory}::append]:
-    Source: 'src/event.rs', lines 118:4-120:5 -/
+    Source: 'src/event.rs', lines 143:4-145:5 -/
 def event.EventHistory.append
   (self : event.EventHistory) (ev : event.Event) :
   Result event.EventHistory
@@ -207,13 +350,13 @@ def event.EventHistory.append
   ok v
 
 /-- [hourglass::event::{hourglass::event::EventHistory}::events]:
-    Source: 'src/event.rs', lines 123:4-125:5 -/
+    Source: 'src/event.rs', lines 148:4-150:5 -/
 def event.EventHistory.events
   (self : event.EventHistory) : Result (Slice event.Event) := do
   ok (alloc.vec.Vec.deref self)
 
 /-- [hourglass::event::{hourglass::event::EventHistory}::truncate]:
-    Source: 'src/event.rs', lines 160:4-165:5
+    Source: 'src/event.rs', lines 185:4-190:5
     Visibility: public -/
 def event.EventHistory.truncate
   (self : event.EventHistory) (after : time.EventId) :
@@ -228,7 +371,7 @@ def event.EventHistory.truncate
   else ok self
 
 /-- [hourglass::fact::{hourglass::fact::Band}::holds]:
-    Source: 'src/fact.rs', lines 55:4-57:5
+    Source: 'src/fact.rs', lines 61:4-63:5
     Visibility: public -/
 def fact.Band.holds (self : fact.Band) (n : Std.I64) : Result Bool := do
   if n >= self.min
@@ -236,13 +379,13 @@ def fact.Band.holds (self : fact.Band) (n : Std.I64) : Result Bool := do
   else ok false
 
 /-- [hourglass::fact::{hourglass::fact::Band}::empty]:
-    Source: 'src/fact.rs', lines 61:4-63:5
+    Source: 'src/fact.rs', lines 67:4-69:5
     Visibility: public -/
 def fact.Band.empty (self : fact.Band) : Result Bool := do
   ok (self.min > self.max)
 
 /-- [hourglass::fact::{hourglass::fact::Band}::clamp]:
-    Source: 'src/fact.rs', lines 68:4-76:5
+    Source: 'src/fact.rs', lines 74:4-82:5
     Visibility: public -/
 def fact.Band.clamp (self : fact.Band) (n : Std.I64) : Result Std.I64 := do
   if n < self.min
@@ -252,22 +395,15 @@ def fact.Band.clamp (self : fact.Band) (n : Std.I64) : Result Std.I64 := do
        else ok n
 
 /-- [hourglass::fact::{hourglass::fact::Band}::inside]:
-    Source: 'src/fact.rs', lines 80:4-82:5
+    Source: 'src/fact.rs', lines 86:4-88:5
     Visibility: public -/
 def fact.Band.inside (self : fact.Band) (other : fact.Band) : Result Bool := do
   if self.min >= other.min
   then ok (self.max <= other.max)
   else ok false
 
-/-- [hourglass::fact::{impl core::clone::Clone for hourglass::fact::Direction}::clone]:
-    Source: 'src/fact.rs', lines 95:9-95:14
-    Visibility: public -/
-def fact.Direction.Insts.CoreCloneClone.clone
-  (self : fact.Direction) : Result fact.Direction := do
-  ok self
-
 /-- [hourglass::fact::{hourglass::fact::Direction}::allows]:
-    Source: 'src/fact.rs', lines 110:4-116:5
+    Source: 'src/fact.rs', lines 116:4-122:5
     Visibility: public -/
 def fact.Direction.allows
   (self : fact.Direction) («from» : Std.I64) («to» : Std.I64) :
@@ -279,7 +415,7 @@ def fact.Direction.allows
   | fact.Direction.Free => ok true
 
 /-- [hourglass::fact::{hourglass::fact::Direction}::can_end]:
-    Source: 'src/fact.rs', lines 122:4-124:5
+    Source: 'src/fact.rs', lines 128:4-130:5
     Visibility: public -/
 def fact.Direction.can_end (self : fact.Direction) : Result Bool := do
   let b ←
@@ -290,7 +426,7 @@ def fact.Direction.can_end (self : fact.Direction) : Result Bool := do
   ok (¬ b)
 
 /-- [hourglass::fact::{hourglass::fact::Direction}::can_restart]:
-    Source: 'src/fact.rs', lines 130:4-132:5
+    Source: 'src/fact.rs', lines 136:4-138:5
     Visibility: public -/
 def fact.Direction.can_restart (self : fact.Direction) : Result Bool := do
   match self with
@@ -299,14 +435,14 @@ def fact.Direction.can_restart (self : fact.Direction) : Result Bool := do
   | fact.Direction.Free => ok true
 
 /-- [hourglass::fact::{impl core::clone::Clone for hourglass::fact::Shape}::clone]:
-    Source: 'src/fact.rs', lines 146:9-146:14
+    Source: 'src/fact.rs', lines 152:9-152:14
     Visibility: public -/
 def fact.Shape.Insts.CoreCloneClone.clone
   (self : fact.Shape) : Result fact.Shape := do
   ok self
 
 /-- [hourglass::fact::{hourglass::fact::Shape}::moving]:
-    Source: 'src/fact.rs', lines 174:4-179:5
+    Source: 'src/fact.rs', lines 180:4-185:5
     Visibility: public -/
 def fact.Shape.moving
   (self : fact.Shape) (direction : fact.Direction) : Result fact.Shape := do
@@ -315,7 +451,7 @@ def fact.Shape.moving
   | fact.Shape.Number band _ => ok (fact.Shape.Number band direction)
 
 /-- [hourglass::fact::{hourglass::fact::Shape}::direction]:
-    Source: 'src/fact.rs', lines 182:4-187:5
+    Source: 'src/fact.rs', lines 188:4-193:5
     Visibility: public -/
 def fact.Shape.direction (self : fact.Shape) : Result fact.Direction := do
   match self with
@@ -323,7 +459,7 @@ def fact.Shape.direction (self : fact.Shape) : Result fact.Direction := do
   | fact.Shape.Number _ direction => ok direction
 
 /-- [hourglass::fact::{hourglass::fact::Shape}::band]:
-    Source: 'src/fact.rs', lines 190:4-195:5
+    Source: 'src/fact.rs', lines 196:4-201:5
     Visibility: public -/
 def fact.Shape.band (self : fact.Shape) : Result (Option fact.Band) := do
   match self with
@@ -331,7 +467,7 @@ def fact.Shape.band (self : fact.Shape) : Result (Option fact.Band) := do
   | fact.Shape.Number band _ => ok (some band)
 
 /-- [hourglass::fact::{hourglass::fact::Shape}::numeric]:
-    Source: 'src/fact.rs', lines 198:4-200:5
+    Source: 'src/fact.rs', lines 204:4-206:5
     Visibility: public -/
 def fact.Shape.numeric (self : fact.Shape) : Result Bool := do
   match self with
@@ -339,14 +475,14 @@ def fact.Shape.numeric (self : fact.Shape) : Result Bool := do
   | fact.Shape.Number _ _ => ok true
 
 /-- [hourglass::fact::{impl core::clone::Clone for hourglass::fact::Count}::clone]:
-    Source: 'src/fact.rs', lines 212:9-212:14
+    Source: 'src/fact.rs', lines 218:9-218:14
     Visibility: public -/
 def fact.Count.Insts.CoreCloneClone.clone
   (self : fact.Count) : Result fact.Count := do
   ok self
 
 /-- [hourglass::fact::{impl core::cmp::PartialEq<hourglass::fact::Count> for hourglass::fact::Count}::eq]:
-    Source: 'src/fact.rs', lines 212:29-212:38
+    Source: 'src/fact.rs', lines 218:29-218:38
     Visibility: public -/
 def fact.Count.Insts.CoreCmpPartialEqCount.eq
   (self : fact.Count) (other : fact.Count) : Result Bool := do
@@ -366,7 +502,7 @@ def fact.Count.Insts.CoreCmpPartialEqCount.eq
   else ok false
 
 /-- [hourglass::fact::{hourglass::fact::Count}::limit]:
-    Source: 'src/fact.rs', lines 222:4-228:5
+    Source: 'src/fact.rs', lines 228:4-234:5
     Visibility: public -/
 def fact.Count.limit (self : fact.Count) : Result (Option Std.U16) := do
   match self with
@@ -375,7 +511,7 @@ def fact.Count.limit (self : fact.Count) : Result (Option Std.U16) := do
   | fact.Count.AtMost n => ok (some n)
 
 /-- [hourglass::fact::{hourglass::fact::Count}::is_single]:
-    Source: 'src/fact.rs', lines 234:4-236:5
+    Source: 'src/fact.rs', lines 240:4-242:5
     Visibility: public -/
 def fact.Count.is_single (self : fact.Count) : Result Bool := do
   let o ← fact.Count.limit self
@@ -383,7 +519,7 @@ def fact.Count.is_single (self : fact.Count) : Result Bool := do
     (some 1#u16)
 
 /-- [hourglass::fact::{impl core::clone::Clone for hourglass::fact::FactRules}::clone]:
-    Source: 'src/fact.rs', lines 241:9-241:14
+    Source: 'src/fact.rs', lines 247:9-247:14
     Visibility: public -/
 def fact.FactRules.Insts.CoreCloneClone.clone
   (self : fact.FactRules) : Result fact.FactRules := do
@@ -403,14 +539,14 @@ def fact.FactRules.Insts.CoreCloneClone.clone
     ok (fact.FactRules.Linked s c c1 bm)
 
 /-- Trait implementation: [hourglass::fact::{impl core::clone::Clone for hourglass::fact::FactRules}]
-    Source: 'src/fact.rs', lines 241:9-241:14 -/
+    Source: 'src/fact.rs', lines 247:9-247:14 -/
 @[reducible]
 def fact.FactRules.Insts.CoreCloneClone : core.clone.Clone fact.FactRules := {
   clone := fact.FactRules.Insts.CoreCloneClone.clone
 }
 
 /-- [hourglass::fact::{hourglass::fact::FactRules}::shape]:
-    Source: 'src/fact.rs', lines 285:4-290:5
+    Source: 'src/fact.rs', lines 291:4-296:5
     Visibility: public -/
 def fact.FactRules.shape (self : fact.FactRules) : Result fact.Shape := do
   match self with
@@ -418,15 +554,69 @@ def fact.FactRules.shape (self : fact.FactRules) : Result fact.Shape := do
   | fact.FactRules.Linked shape _ _ _ => ok shape
 
 /-- [hourglass::fact::{hourglass::fact::FactRules}::takes_target]:
-    Source: 'src/fact.rs', lines 292:4-294:5
+    Source: 'src/fact.rs', lines 298:4-300:5
     Visibility: public -/
 def fact.FactRules.takes_target (self : fact.FactRules) : Result Bool := do
   match self with
   | fact.FactRules.Solo _ => ok false
   | fact.FactRules.Linked _ _ _ _ => ok true
 
+/-- [hourglass::fact::holds_type]: loop 0:
+    Source: 'src/fact.rs', lines 475:4-482:1 -/
+@[rust_loop]
+def fact.holds_type_loop
+  (list : Slice entity.EntityType) (t : entity.EntityType) (i : Std.Usize) :
+  Result Bool
+  := do
+  let i1 := Slice.len list
+  if i < i1
+  then
+    let et ← Slice.index_usize list i
+    let b ← entity.EntityType.Insts.CoreCmpPartialEqEntityType.eq et t
+    if b
+    then ok true
+    else let i2 ← i + 1#usize
+         fact.holds_type_loop list t i2
+  else ok false
+partial_fixpoint
+
+/-- [hourglass::fact::holds_type]:
+    Source: 'src/fact.rs', lines 473:0-482:1 -/
+@[reducible]
+def fact.holds_type
+  (list : Slice entity.EntityType) (t : entity.EntityType) : Result Bool := do
+  fact.holds_type_loop list t 0#usize
+
+/-- [hourglass::fact::{hourglass::fact::FactRules}::type_allowed]:
+    Source: 'src/fact.rs', lines 304:4-317:5
+    Visibility: public -/
+def fact.FactRules.type_allowed
+  (self : fact.FactRules) (holder : entity.EntityType)
+  (target : entity.EntityType) :
+  Result Bool
+  := do
+  match self with
+  | fact.FactRules.Solo _ => ok false
+  | fact.FactRules.Linked _ _ _ allowed =>
+    let b ←
+      alloc.collections.btree.map.BTreeMap.is_empty
+        alloc.alloc.Global.Insts.CoreAllocAllocatorClone allowed
+    if b
+    then ok true
+    else
+      let o ←
+        alloc.collections.btree.map.BTreeMap.get
+          alloc.alloc.Global.Insts.CoreAllocAllocatorClone
+          (core.borrow.Borrow.Blanket entity.EntityType)
+          entity.EntityType.Insts.CoreCmpOrd entity.EntityType.Insts.CoreCmpOrd
+          allowed holder
+      match o with
+      | none => ok false
+      | some list => let s := alloc.vec.Vec.deref list
+                     fact.holds_type s target
+
 /-- [hourglass::fact::{impl core::clone::Clone for hourglass::fact::FactVocabulary}::clone]:
-    Source: 'src/fact.rs', lines 373:9-373:14
+    Source: 'src/fact.rs', lines 379:9-379:14
     Visibility: public -/
 def fact.FactVocabulary.Insts.CoreCloneClone.clone
   (self : fact.FactVocabulary) : Result fact.FactVocabulary := do
@@ -437,7 +627,7 @@ def fact.FactVocabulary.Insts.CoreCloneClone.clone
   ok { version := i, names := n }
 
 /-- [hourglass::fact::{hourglass::fact::FactVocabulary}::rules_key]:
-    Source: 'src/fact.rs', lines 407:4-409:5 -/
+    Source: 'src/fact.rs', lines 413:4-415:5 -/
 def fact.FactVocabulary.rules_key
   (self : fact.FactVocabulary) («name» : String) :
   Result (Option fact.FactRules)
@@ -717,182 +907,6 @@ def memory.merge
     ok (core.result.Result.Ok out2)
   else ok (core.result.Result.Err faults1)
 
-/-- [hourglass::time::{impl core::clone::Clone for hourglass::time::Tick}::clone]:
-    Source: 'src/time.rs', lines 28:4-28:9
-    Visibility: public -/
-def time.Tick.Insts.CoreCloneClone.clone
-  (self : time.Tick) : Result time.Tick := do
-  ok self
-
-/-- [hourglass::reject::{impl core::clone::Clone for hourglass::reject::Migration}::clone]:
-    Source: 'src/reject.rs', lines 180:9-180:14
-    Visibility: public -/
-def reject.Migration.Insts.CoreCloneClone.clone
-  (self : reject.Migration) : Result reject.Migration := do
-  match self with
-  | reject.Migration.DroppedName => ok reject.Migration.DroppedName
-  | reject.Migration.RulesChanged => ok reject.Migration.RulesChanged
-  | reject.Migration.BandNarrowed __self_0 __self_1 =>
-    let p ← (BuiltinClone (Std.I64 × Std.I64)).clone __self_0
-    let p1 ← (BuiltinClone (Std.I64 × Std.I64)).clone __self_1
-    ok (reject.Migration.BandNarrowed p p1)
-
-/-- [hourglass::reject::{impl core::clone::Clone for hourglass::reject::Contradiction}::clone]:
-    Source: 'src/reject.rs', lines 88:9-88:14
-    Visibility: public -/
-def reject.Contradiction.Insts.CoreCloneClone.clone
-  (self : reject.Contradiction) : Result reject.Contradiction := do
-  match self with
-  | reject.Contradiction.UnknownEntity __self_0 =>
-    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
-    ok (reject.Contradiction.UnknownEntity ei)
-  | reject.Contradiction.Gone __self_0 =>
-    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
-    ok (reject.Contradiction.Gone ei)
-  | reject.Contradiction.SelfReference __self_0 =>
-    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
-    ok (reject.Contradiction.SelfReference ei)
-  | reject.Contradiction.Cycle __self_0 __self_1 =>
-    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
-    let ei1 ← time.EntityId.Insts.CoreCloneClone.clone __self_1
-    ok (reject.Contradiction.Cycle ei ei1)
-  | reject.Contradiction.TooManyHolders __self_0 __self_1 __self_2 __self_3 =>
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
-    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_1
-    let v ←
-      alloc.vec.CloneVec.clone time.EntityId.Insts.CoreCloneClone __self_2
-    let i ← lift (core.clone.impls.CloneU16.clone __self_3)
-    ok (reject.Contradiction.TooManyHolders s ei v i)
-  | reject.Contradiction.TooManyTargets __self_0 __self_1 __self_2 __self_3 =>
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
-    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_1
-    let v ←
-      alloc.vec.CloneVec.clone time.EntityId.Insts.CoreCloneClone __self_2
-    let i ← lift (core.clone.impls.CloneU16.clone __self_3)
-    ok (reject.Contradiction.TooManyTargets s ei v i)
-  | reject.Contradiction.IdInUse __self_0 =>
-    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
-    ok (reject.Contradiction.IdInUse ei)
-  | reject.Contradiction.NoSuchFact __self_0 __self_1 __self_2 =>
-    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_1
-    let o ←
-      core.option.Option.Insts.CoreCloneClone.clone
-        time.EntityId.Insts.CoreCloneClone __self_2
-    ok (reject.Contradiction.NoSuchFact ei s o)
-  | reject.Contradiction.Stale __self_0 __self_1 __self_2 __self_3 =>
-    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_1
-    let i ← lift (core.clone.impls.CloneI64.clone __self_2)
-    let i1 ← lift (core.clone.impls.CloneI64.clone __self_3)
-    ok (reject.Contradiction.Stale ei s i i1)
-  | reject.Contradiction.Backward __self_0 __self_1 __self_2 __self_3 __self_4
-    =>
-    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_1
-    let d ← fact.Direction.Insts.CoreCloneClone.clone __self_2
-    let o ←
-      core.option.Option.Insts.CoreCloneClone.clone core.clone.CloneI64
-        __self_3
-    let o1 ←
-      core.option.Option.Insts.CoreCloneClone.clone core.clone.CloneI64
-        __self_4
-    ok (reject.Contradiction.Backward ei s d o o1)
-  | reject.Contradiction.TimeMovedBack __self_0 __self_1 =>
-    let t ← time.Tick.Insts.CoreCloneClone.clone __self_0
-    let t1 ← time.Tick.Insts.CoreCloneClone.clone __self_1
-    ok (reject.Contradiction.TimeMovedBack t t1)
-  | reject.Contradiction.NoMigrationPath __self_0 __self_1 =>
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
-    let m ← reject.Migration.Insts.CoreCloneClone.clone __self_1
-    ok (reject.Contradiction.NoMigrationPath s m)
-  | reject.Contradiction.VersionStep __self_0 __self_1 __self_2 =>
-    let i ← lift (core.clone.impls.CloneU32.clone __self_0)
-    let i1 ← lift (core.clone.impls.CloneU32.clone __self_1)
-    let b ← lift (core.clone.impls.CloneBool.clone __self_2)
-    ok (reject.Contradiction.VersionStep i i1 b)
-
-/-- [hourglass::reject::{impl core::clone::Clone for hourglass::reject::Unmergeable}::clone]:
-    Source: 'src/reject.rs', lines 164:9-164:14
-    Visibility: public -/
-def reject.Unmergeable.Insts.CoreCloneClone.clone
-  (self : reject.Unmergeable) : Result reject.Unmergeable := do
-  ok self
-
-/-- [hourglass::reject::{impl core::clone::Clone for hourglass::reject::Malformed}::clone]:
-    Source: 'src/reject.rs', lines 44:9-44:14
-    Visibility: public -/
-def reject.Malformed.Insts.CoreCloneClone.clone
-  (self : reject.Malformed) : Result reject.Malformed := do
-  match self with
-  | reject.Malformed.UnknownFact __self_0 =>
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
-    ok (reject.Malformed.UnknownFact s)
-  | reject.Malformed.NeedsNumber __self_0 =>
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
-    ok (reject.Malformed.NeedsNumber s)
-  | reject.Malformed.TakesNoNumber __self_0 =>
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
-    ok (reject.Malformed.TakesNoNumber s)
-  | reject.Malformed.NeedsTarget __self_0 =>
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
-    ok (reject.Malformed.NeedsTarget s)
-  | reject.Malformed.TakesNoTarget __self_0 =>
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
-    ok (reject.Malformed.TakesNoTarget s)
-  | reject.Malformed.TypeNotAllowed __self_0 __self_1 __self_2 =>
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
-    let et ← entity.EntityType.Insts.CoreCloneClone.clone __self_1
-    let et1 ← entity.EntityType.Insts.CoreCloneClone.clone __self_2
-    ok (reject.Malformed.TypeNotAllowed s et et1)
-  | reject.Malformed.OutOfBand __self_0 __self_1 __self_2 __self_3 =>
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
-    let i ← lift (core.clone.impls.CloneI64.clone __self_1)
-    let i1 ← lift (core.clone.impls.CloneI64.clone __self_2)
-    let i2 ← lift (core.clone.impls.CloneI64.clone __self_3)
-    ok (reject.Malformed.OutOfBand s i i1 i2)
-  | reject.Malformed.Backward __self_0 __self_1 __self_2 __self_3 =>
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
-    let d ← fact.Direction.Insts.CoreCloneClone.clone __self_1
-    let o ←
-      core.option.Option.Insts.CoreCloneClone.clone core.clone.CloneI64
-        __self_2
-    let o1 ←
-      core.option.Option.Insts.CoreCloneClone.clone core.clone.CloneI64
-        __self_3
-    ok (reject.Malformed.Backward s d o o1)
-  | reject.Malformed.UnnamedEntity __self_0 =>
-    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
-    ok (reject.Malformed.UnnamedEntity ei)
-  | reject.Malformed.Unmergeable __self_0 __self_1 =>
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
-    let u ← reject.Unmergeable.Insts.CoreCloneClone.clone __self_1
-    ok (reject.Malformed.Unmergeable s u)
-  | reject.Malformed.BrokenVocabulary __self_0 __self_1 =>
-    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
-    let s1 ← alloc.string.String.Insts.CoreCloneClone.clone __self_1
-    ok (reject.Malformed.BrokenVocabulary s s1)
-
-/-- [hourglass::reject::{impl core::clone::Clone for hourglass::reject::Rejection}::clone]:
-    Source: 'src/reject.rs', lines 30:9-30:14
-    Visibility: public -/
-def reject.Rejection.Insts.CoreCloneClone.clone
-  (self : reject.Rejection) : Result reject.Rejection := do
-  match self with
-  | reject.Rejection.Malformed __self_0 =>
-    let m ← reject.Malformed.Insts.CoreCloneClone.clone __self_0
-    ok (reject.Rejection.Malformed m)
-  | reject.Rejection.Contradiction __self_0 =>
-    let c ← reject.Contradiction.Insts.CoreCloneClone.clone __self_0
-    ok (reject.Rejection.Contradiction c)
-
-/-- [hourglass::time::{impl core::cmp::PartialEq<hourglass::time::EntityId> for hourglass::time::EntityId}::eq]:
-    Source: 'src/time.rs', lines 13:24-13:33
-    Visibility: public -/
-def time.EntityId.Insts.CoreCmpPartialEqEntityId.eq
-  (self : time.EntityId) (other : time.EntityId) : Result Bool := do
-  ok (self = other)
-
 /-- Trait implementation: [hourglass::time::{impl core::cmp::PartialEq<hourglass::time::EntityId> for hourglass::time::EntityId}]
     Source: 'src/time.rs', lines 13:24-13:33 -/
 @[reducible]
@@ -946,7 +960,7 @@ def world.World.entity
   ids.Ids.get self.entities id
 
 /-- [hourglass::validate::target_fits]:
-    Source: 'src/validate.rs', lines 379:0-394:1 -/
+    Source: 'src/validate.rs', lines 371:0-386:1 -/
 def validate.target_fits
   («name» : String) (rules : fact.FactRules)
   (linked_to : Option time.EntityId) (out : alloc.vec.Vec reject.Rejection) :
@@ -970,7 +984,7 @@ def validate.target_fits
         (reject.Malformed.TakesNoTarget s))
 
 /-- [hourglass::world::in_slot]:
-    Source: 'src/world.rs', lines 452:0-454:1 -/
+    Source: 'src/world.rs', lines 453:0-455:1 -/
 def world.in_slot
   (f : fact.Fact) («name» : String) (linked_to : Option time.EntityId) :
   Result Bool
@@ -983,7 +997,7 @@ def world.in_slot
   else ok false
 
 /-- [hourglass::world::slot_index]: loop 0:
-    Source: 'src/world.rs', lines 490:4-497:1 -/
+    Source: 'src/world.rs', lines 491:4-498:1 -/
 @[rust_loop]
 def world.slot_index_loop
   (facts : Slice fact.Fact) («name» : String)
@@ -1004,7 +1018,7 @@ def world.slot_index_loop
 partial_fixpoint
 
 /-- [hourglass::world::slot_index]:
-    Source: 'src/world.rs', lines 484:0-497:1 -/
+    Source: 'src/world.rs', lines 485:0-498:1 -/
 @[reducible]
 def world.slot_index
   (facts : Slice fact.Fact) («name» : String)
@@ -1171,8 +1185,17 @@ def validate.update
         else ok out3
     else ok out3
 
+/-- [hourglass::world::{hourglass::world::World}::ever_ended]:
+    Source: 'src/world.rs', lines 391:4-393:5
+    Visibility: public -/
+def world.World.ever_ended
+  (self : world.World) (entity : time.EntityId) («name» : Str) :
+  Result Bool
+  := do
+  event.EventHistory.ever_ended self.history entity «name»
+
 /-- [hourglass::world::{hourglass::world::World}::location_of]:
-    Source: 'src/world.rs', lines 405:4-410:5
+    Source: 'src/world.rs', lines 406:4-411:5
     Visibility: public -/
 def world.World.location_of
   (self : world.World) (id : time.EntityId) :
@@ -1226,7 +1249,7 @@ def world.World.would_cycle
     self.history entity n target 0#usize
 
 /-- [hourglass::validate::push_other_target]:
-    Source: 'src/validate.rs', lines 552:0-560:1 -/
+    Source: 'src/validate.rs', lines 520:0-528:1 -/
 def validate.push_other_target
   (out : alloc.vec.Vec time.EntityId) (f : fact.Fact) («name» : String)
   (target : time.EntityId) :
@@ -1245,7 +1268,7 @@ def validate.push_other_target
   else ok out
 
 /-- [hourglass::validate::targets_except]: loop 0:
-    Source: 'src/validate.rs', lines 542:4-545:5 -/
+    Source: 'src/validate.rs', lines 510:4-513:5 -/
 @[rust_loop]
 def validate.targets_except_loop
   («name» : String) (target : time.EntityId)
@@ -1265,7 +1288,7 @@ def validate.targets_except_loop
 partial_fixpoint
 
 /-- [hourglass::validate::targets_except]:
-    Source: 'src/validate.rs', lines 535:0-547:1 -/
+    Source: 'src/validate.rs', lines 503:0-515:1 -/
 def validate.targets_except
   (w : world.World) (who : time.EntityId) («name» : String)
   (target : time.EntityId) :
@@ -1285,7 +1308,7 @@ def world.World.entity_ids
   ids.Ids.ids self.entities
 
 /-- [hourglass::validate::push_holder]:
-    Source: 'src/validate.rs', lines 517:0-530:1 -/
+    Source: 'src/validate.rs', lines 485:0-498:1 -/
 def validate.push_holder
   (out : alloc.vec.Vec time.EntityId) (w : world.World) (id : time.EntityId)
   («name» : String) (target : time.EntityId) (who : time.EntityId) :
@@ -1307,7 +1330,7 @@ def validate.push_holder
     else ok out
 
 /-- [hourglass::validate::holders_except]: loop 0:
-    Source: 'src/validate.rs', lines 507:4-510:5 -/
+    Source: 'src/validate.rs', lines 475:4-478:5 -/
 @[rust_loop]
 def validate.holders_except_loop
   (w : world.World) («name» : String) (target : time.EntityId)
@@ -1328,7 +1351,7 @@ def validate.holders_except_loop
 partial_fixpoint
 
 /-- [hourglass::validate::holders_except]:
-    Source: 'src/validate.rs', lines 503:0-512:1 -/
+    Source: 'src/validate.rs', lines 471:0-480:1 -/
 def validate.holders_except
   (w : world.World) («name» : String) (target : time.EntityId)
   (who : time.EntityId) :
@@ -1339,7 +1362,7 @@ def validate.holders_except
     time.EntityId) 0#usize
 
 /-- [hourglass::validate::counts_fit]:
-    Source: 'src/validate.rs', lines 453:0-498:1 -/
+    Source: 'src/validate.rs', lines 421:0-466:1 -/
 def validate.counts_fit
   (w : world.World) (who : time.EntityId) («name» : String)
   (rules : fact.FactRules) (target : time.EntityId)
@@ -1386,8 +1409,44 @@ def validate.counts_fit
               (reject.Contradiction.TooManyTargets s who pointing_at limit))
           else ok out1
 
+/-- [hourglass::world::{hourglass::world::World}::type_of]:
+    Source: 'src/world.rs', lines 397:4-402:5
+    Visibility: public -/
+def world.World.type_of
+  (self : world.World) (id : time.EntityId) :
+  Result (Option entity.EntityType)
+  := do
+  let o ← ids.Ids.get self.entities id
+  match o with
+  | none => ok none
+  | some e => ok (some e.entity_type)
+
+/-- [hourglass::validate::types_fit]:
+    Source: 'src/validate.rs', lines 400:0-418:1 -/
+def validate.types_fit
+  (w : world.World) (who : time.EntityId) («name» : String)
+  (rules : fact.FactRules) (target : time.EntityId)
+  (out : alloc.vec.Vec reject.Rejection) :
+  Result (alloc.vec.Vec reject.Rejection)
+  := do
+  let o ← world.World.type_of w who
+  let o1 ← world.World.type_of w target
+  match o with
+  | none => ok out
+  | some holder =>
+    match o1 with
+    | none => ok out
+    | some goes_to =>
+      let b ← fact.FactRules.type_allowed rules holder goes_to
+      if b
+      then ok out
+      else
+        let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+        alloc.vec.Vec.push out (reject.Rejection.Malformed
+          (reject.Malformed.TypeNotAllowed s holder goes_to))
+
 /-- [hourglass::validate::number_fits]:
-    Source: 'src/validate.rs', lines 356:0-376:1 -/
+    Source: 'src/validate.rs', lines 348:0-368:1 -/
 def validate.number_fits
   («name» : String) (shape : fact.Shape) (value : Option Std.I64)
   (out : alloc.vec.Vec reject.Rejection) :
@@ -1416,36 +1475,8 @@ def validate.number_fits
         alloc.vec.Vec.push out (reject.Rejection.Malformed
           (reject.Malformed.OutOfBand s n band.min band.max))
 
-/-- [hourglass::validate::push_all]: loop 0:
-    Source: 'src/validate.rs', lines 349:4-352:5 -/
-@[rust_loop]
-def validate.push_all_loop
-  (out : alloc.vec.Vec reject.Rejection) (faults : Slice reject.Rejection)
-  (i : Std.Usize) :
-  Result (alloc.vec.Vec reject.Rejection)
-  := do
-  let i1 := Slice.len faults
-  if i < i1
-  then
-    let r ← Slice.index_usize faults i
-    let r1 ← reject.Rejection.Insts.CoreCloneClone.clone r
-    let out1 ← alloc.vec.Vec.push out r1
-    let i2 ← i + 1#usize
-    validate.push_all_loop out1 faults i2
-  else ok out
-partial_fixpoint
-
-/-- [hourglass::validate::push_all]:
-    Source: 'src/validate.rs', lines 347:0-353:1 -/
-@[reducible]
-def validate.push_all
-  (out : alloc.vec.Vec reject.Rejection) (faults : Slice reject.Rejection) :
-  Result (alloc.vec.Vec reject.Rejection)
-  := do
-  validate.push_all_loop out faults 0#usize
-
 /-- [hourglass::world::name_index]: loop 0:
-    Source: 'src/world.rs', lines 503:4-510:1 -/
+    Source: 'src/world.rs', lines 504:4-511:1 -/
 @[rust_loop]
 def world.name_index_loop
   (facts : Slice fact.Fact) («name» : String) (i : Std.Usize) :
@@ -1465,7 +1496,7 @@ def world.name_index_loop
 partial_fixpoint
 
 /-- [hourglass::world::name_index]:
-    Source: 'src/world.rs', lines 501:0-510:1 -/
+    Source: 'src/world.rs', lines 502:0-511:1 -/
 @[reducible]
 def world.name_index
   (facts : Slice fact.Fact) («name» : String) :
@@ -1474,7 +1505,7 @@ def world.name_index
   world.name_index_loop facts «name» 0#usize
 
 /-- [hourglass::world::single_target]:
-    Source: 'src/world.rs', lines 442:0-447:1 -/
+    Source: 'src/world.rs', lines 443:0-448:1 -/
 def world.single_target
   (vocabulary : fact.FactVocabulary) («name» : String) : Result Bool := do
   let o ← fact.FactVocabulary.rules_key vocabulary «name»
@@ -1556,9 +1587,7 @@ def validate.start
           if b1
           then
             do
-            let v ← validate.queries.type_faults w who «name» rules target
-            let s := alloc.vec.Vec.deref v
-            let out7 ← validate.push_all out5 s
+            let out7 ← validate.types_fit w who «name» rules target out5
             validate.counts_fit w who «name» rules target out7
           else ok out5
         let s ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref «name»
@@ -1582,12 +1611,14 @@ def validate.start
         if b
         then ok out4
         else
-          let b1 ← validate.queries.ended_before w who «name»
+          let s ←
+            alloc.string.String.Insts.CoreOpsDerefDerefStr.deref «name»
+          let b1 ← world.World.ever_ended w who s
           if b1
           then
-            let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+            let s1 ← alloc.string.String.Insts.CoreCloneClone.clone «name»
             alloc.vec.Vec.push out4 (reject.Rejection.Contradiction
-              (reject.Contradiction.Backward who s direction none value))
+              (reject.Contradiction.Backward who s1 direction none value))
           else ok out4
       | some held_value =>
         match held_value with
@@ -1667,7 +1698,7 @@ def world.World.new
   ok { tick := 0#u64, vocabulary, entities := i, history := eh }
 
 /-- [hourglass::world::drop_slot]: loop 0:
-    Source: 'src/world.rs', lines 473:4-479:5 -/
+    Source: 'src/world.rs', lines 474:4-480:5 -/
 @[rust_loop]
 def world.drop_slot_loop
   (facts : alloc.vec.Vec fact.Fact) («name» : String)
@@ -1692,7 +1723,7 @@ def world.drop_slot_loop
 partial_fixpoint
 
 /-- [hourglass::world::drop_slot]:
-    Source: 'src/world.rs', lines 471:0-480:1 -/
+    Source: 'src/world.rs', lines 472:0-481:1 -/
 @[reducible]
 def world.drop_slot
   (facts : alloc.vec.Vec fact.Fact) («name» : String)
@@ -1702,7 +1733,7 @@ def world.drop_slot
   world.drop_slot_loop facts «name» linked_to 0#usize
 
 /-- [hourglass::world::drop_name]: loop 0:
-    Source: 'src/world.rs', lines 460:4-466:5 -/
+    Source: 'src/world.rs', lines 461:4-467:5 -/
 @[rust_loop]
 def world.drop_name_loop
   (facts : alloc.vec.Vec fact.Fact) («name» : String) (i : Std.Usize) :
@@ -1726,7 +1757,7 @@ def world.drop_name_loop
 partial_fixpoint
 
 /-- [hourglass::world::drop_name]:
-    Source: 'src/world.rs', lines 458:0-467:1 -/
+    Source: 'src/world.rs', lines 459:0-468:1 -/
 @[reducible]
 def world.drop_name
   (facts : alloc.vec.Vec fact.Fact) («name» : String) :

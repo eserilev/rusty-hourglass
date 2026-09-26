@@ -111,7 +111,7 @@ fn start(
         // person, and the history names the dead (spec decision
         // 9). Only the HOLDER must be alive.
         if rules.takes_target() {
-            push_all(out, &queries::type_faults(w, who, name, rules, target));
+            types_fit(w, who, name, rules, target, out);
             counts_fit(w, who, name, rules, target, out);
         }
         if is_located_in(name) {
@@ -146,7 +146,7 @@ fn start(
             }
         }
         None => {
-            if !direction.can_restart() && queries::ended_before(w, who, name) {
+            if !direction.can_restart() && w.ever_ended(who, name) {
                 out.push(Rejection::Contradiction(Contradiction::Backward {
                     entity: who,
                     name: name.clone(),
@@ -344,14 +344,6 @@ fn slot_value(
 }
 
 /// Add each fault of the list, in order.
-fn push_all(out: &mut Vec<Rejection>, faults: &[Rejection]) {
-    let mut i = 0;
-    while i < faults.len() {
-        out.push(faults[i].clone());
-        i += 1;
-    }
-}
-
 #[allow(clippy::ptr_arg)]
 fn number_fits(name: &String, shape: Shape, value: Option<i64>, out: &mut Vec<Rejection>) {
     match (shape, value) {
@@ -393,56 +385,32 @@ fn target_fits(
     }
 }
 
-/// The world queries of the gate. Each one only reads the world and
-/// answers a value, and none of them touches the list of faults. The
-/// Lean proofs keep this module opaque, so a law about `validate`
-/// holds for every answer these queries give.
+/// The one query of the gate that Aeneas does not translate, because
+/// its library has no `trim`. The Lean model gives it a body, and the
+/// tests at the end of this file check that body against this code.
 mod queries {
-    use super::types_fit;
-    use crate::fact::FactRules;
-    use crate::reject::Rejection;
-    use crate::time::EntityId;
-    use crate::world::World;
-
     /// A name with nothing in it but white space.
     #[allow(clippy::ptr_arg)]
     pub(super) fn blank(name: &String) -> bool {
         name.trim().is_empty()
     }
-
-    #[allow(clippy::ptr_arg)]
-    pub(super) fn type_faults(
-        w: &World,
-        who: EntityId,
-        name: &String,
-        rules: &FactRules,
-        target: EntityId,
-    ) -> Vec<Rejection> {
-        let mut out = Vec::new();
-        types_fit(w, who, name, rules, target, &mut out);
-        out
-    }
-
-    #[allow(clippy::ptr_arg)]
-    pub(super) fn ended_before(w: &World, who: EntityId, name: &String) -> bool {
-        w.ever_ended(who, name)
-    }
 }
 
+#[allow(clippy::ptr_arg)]
 fn types_fit(
-    world: &World,
-    entity: EntityId,
-    name: &str,
+    w: &World,
+    who: EntityId,
+    name: &String,
     rules: &FactRules,
     target: EntityId,
     out: &mut Vec<Rejection>,
 ) {
-    let (Some(holder), Some(goes_to)) = (world.type_of(entity), world.type_of(target)) else {
+    let (Some(holder), Some(goes_to)) = (w.type_of(who), w.type_of(target)) else {
         return;
     };
     if !rules.type_allowed(holder, goes_to) {
         out.push(Rejection::Malformed(Malformed::TypeNotAllowed {
-            name: name.to_string(),
+            name: name.clone(),
             holder,
             target: goes_to,
         }));
@@ -599,4 +567,54 @@ pub fn vocabulary_sound(vocabulary: &FactVocabulary) -> Vec<Rejection> {
         }
     }
     out
+}
+
+/// The contract of the Lean model of `blank`
+/// (`lean/Hourglass/FunsExternal.lean`, `rustWhiteSpace`).
+#[cfg(test)]
+mod tests {
+    use super::queries::blank;
+    use proptest::prelude::*;
+
+    /// The Unicode `White_Space` chars, as the Lean model lists them.
+    fn model_white_space(c: char) -> bool {
+        let n = c as u32;
+        (0x09..=0x0D).contains(&n)
+            || n == 0x20
+            || n == 0x85
+            || n == 0xA0
+            || n == 0x1680
+            || (0x2000..=0x200A).contains(&n)
+            || n == 0x2028
+            || n == 0x2029
+            || n == 0x202F
+            || n == 0x205F
+            || n == 0x3000
+    }
+
+    /// Every char, one time: the list of the model is the list of
+    /// `char::is_whitespace`.
+    #[test]
+    fn the_white_space_list_is_rusts() {
+        for c in (0..=0x10FFFF).filter_map(char::from_u32) {
+            assert_eq!(c.is_whitespace(), model_white_space(c), "U+{:04X}", c as u32);
+        }
+    }
+
+    /// White space chars often, any char sometimes.
+    fn name() -> impl Strategy<Value = String> {
+        let c = prop_oneof![
+            prop::sample::select(vec![' ', '\t', '\n', '\u{A0}', '\u{2003}', '\u{3000}', '\u{200B}']),
+            any::<char>(),
+        ];
+        prop::collection::vec(c, 0..6).prop_map(|v| v.into_iter().collect())
+    }
+
+    proptest! {
+        /// `blank` is true exactly when every char is white space.
+        #[test]
+        fn blank_follows_the_model(s in name()) {
+            prop_assert_eq!(blank(&s), s.chars().all(model_white_space));
+        }
+    }
 }

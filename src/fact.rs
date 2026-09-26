@@ -34,7 +34,13 @@ pub const LOCATED_IN: &str = "located_in";
 /// Is this name `located_in`? The compare is on two `str` values,
 /// because Aeneas cannot translate a compare of `String` with `&str`.
 pub(crate) fn is_located_in(name: &str) -> bool {
-    *name == *LOCATED_IN
+    same_str(name, LOCATED_IN)
+}
+
+/// Two `str` values with the same bytes. The verified code compares a
+/// `String` with a `&str` through this function (see `is_located_in`).
+pub(crate) fn same_str(a: &str, b: &str) -> bool {
+    *a == *b
 }
 
 /// A whole-number band, closed at both ends. Every number a fact
@@ -304,7 +310,7 @@ impl FactRules {
                 }
                 match allowed.get(&holder) {
                     None => false,
-                    Some(list) => list.contains(&target),
+                    Some(list) => holds_type(list, target),
                 }
             }
         }
@@ -463,6 +469,18 @@ pub fn located_in_rules() -> FactRules {
         .allowing(EntityType::Faction, &[EntityType::Place])
 }
 
+/// Is the type in the list?
+fn holds_type(list: &[EntityType], t: EntityType) -> bool {
+    let mut i = 0;
+    while i < list.len() {
+        if list[i] == t {
+            return true;
+        }
+        i += 1;
+    }
+    false
+}
+
 /// One row of the vocabulary, for a prompt. No prose.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FactLine {
@@ -472,4 +490,50 @@ pub struct FactLine {
     pub holders: Option<Count>,
     pub targets: Option<Count>,
     pub allowed: BTreeMap<EntityType, Vec<EntityType>>,
+}
+
+/// The contract of the Lean model of the type map
+/// (`lean/Hourglass/TypesExternal.lean`): a list of entries in key
+/// order, where `get` is the first entry with an equal key.
+#[cfg(test)]
+mod tests {
+    use super::{Count, EntityType, FactRules, Shape};
+    use proptest::prelude::*;
+
+    fn ty() -> impl Strategy<Value = EntityType> {
+        prop::sample::select(vec![
+            EntityType::Person,
+            EntityType::Place,
+            EntityType::Thing,
+            EntityType::Faction,
+        ])
+    }
+
+    proptest! {
+        /// `type_allowed` answers what the list model answers.
+        #[test]
+        fn type_allowed_follows_the_model(
+            lines in prop::collection::vec((ty(), prop::collection::vec(ty(), 0..4)), 0..6),
+            holder in ty(),
+            target in ty(),
+        ) {
+            let mut rules = FactRules::linked(Shape::flag(), Count::Many, Count::Many);
+            for (h, ts) in &lines {
+                rules = rules.allowing(*h, ts);
+            }
+            let FactRules::Linked { allowed, .. } = &rules else {
+                unreachable!("linked rules");
+            };
+            let entries: Vec<(EntityType, Vec<EntityType>)> =
+                allowed.iter().map(|(k, v)| (*k, v.clone())).collect();
+            // The keys are unique and in the order of the derive.
+            prop_assert!(entries.windows(2).all(|p| p[0].0 < p[1].0));
+            let want = entries.is_empty()
+                || match entries.iter().find(|(k, _)| *k == holder) {
+                    None => false,
+                    Some((_, list)) => list.contains(&target),
+                };
+            prop_assert_eq!(rules.type_allowed(holder, target), want);
+        }
+    }
 }

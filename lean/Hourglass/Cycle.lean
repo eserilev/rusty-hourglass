@@ -51,7 +51,7 @@ theorem loc_test {s : String} {str : Str} {b : Bool}
   split at h1
   · simp only [ok.injEq] at h1
     subst h1
-    simp only [fact.is_located_in, Str.Insts.CoreCmpPartialEqStr.eq, ok.injEq] at h2
+    simp only [fact.is_located_in, fact.same_str, Str.Insts.CoreCmpPartialEqStr.eq, ok.injEq] at h2
     subst h2
     simp only [locB, fact.LOCATED_IN, toStr]
     apply decide_eq_decide.2

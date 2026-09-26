@@ -135,7 +135,7 @@ def names.Names.Insts.CoreCloneClone.clone
   ok m
 
 /-- `BTreeMap::new` and `BTreeMap::clone`, on the placeholder model of
-    TypesExternal.lean. No law reads this map. -/
+    TypesExternal.lean. -/
 @[rust_fun
   "alloc::collections::btree::map::{alloc::collections::btree::map::BTreeMap<@K, @V, alloc::alloc::Global>}::new"]
 def alloc.collections.btree.map.BTreeMapKVGlobal.new
@@ -236,27 +236,99 @@ def ids.Ids.len {V : Type} (m : ids.Ids V) : Result Std.Usize :=
     ok (UScalar.ofNatCore _ h)
   else fail .panic
 
-/-! ## The world queries of the gate, opaque on purpose
+/-! ## The type map of a link, and the derives of `EntityType` -/
 
-`validate` translates in full, except these queries (the module
-`validate::queries`). Each one only reads the world and answers a
-value, and none of them touches the list of faults. So a law about
-`validate` holds for every answer they give. Each axiom only names a
-function of an inhabited type, so it cannot make the logic
-inconsistent. Trust.lean pins exactly which laws use them. -/
+/-- `Borrow` of a value as itself gives the value. -/
+@[rust_fun "core::borrow::{core::borrow::Borrow<@T, @T>}::borrow"]
+def core.borrow.Borrow.Blanket.borrow {T : Type} (x : T) : Result T :=
+  ok x
 
-/-- [hourglass::validate::queries::blank]:
-    Source: 'src/validate.rs', lines 362:4-364:5 -/
-axiom validate.queries.blank : String → Result Bool
+/-- The first entry whose key compares equal to `q`. -/
+def btreeLookup {K V Q : Type} (bor : K → Result Q) (cmp : Q → Q → Result Ordering) :
+    List (K × V) → Q → Result (Option V)
+  | [], _ => ok none
+  | (k, v) :: rest, q => do
+    let kq ← bor k
+    let o ← cmp kq q
+    if o = .eq then ok (some v) else btreeLookup bor cmp rest q
 
-/-- [hourglass::validate::queries::type_faults]:
-    Source: 'src/validate.rs', lines 376:4-386:5 -/
-axiom validate.queries.type_faults
-  :
-  world.World → time.EntityId → String → fact.FactRules → time.EntityId
-    → Result (alloc.vec.Vec reject.Rejection)
+/-- `BTreeMap::get` on the list model: the value of the entry with an
+    equal key. A real map lists each key one time, in order, so the
+    first equal key is the one key. The test
+    `type_allowed_follows_the_model` in `src/fact.rs` checks this. -/
+def alloc.collections.btree.map.BTreeMap.get
+    {K : Type} {V : Type} {A : Type} {Q : Type}
+    (_coreallocAllocatorCloneInst : core.alloc.AllocatorClone A)
+    (coreborrowBorrowInst : core.borrow.Borrow K Q)
+    (_corecmpOrdInst : core.cmp.Ord K) (corecmpOrdInst1 : core.cmp.Ord Q)
+    (m : alloc.collections.btree.map.BTreeMap K V A) (q : Q) : Result (Option V) :=
+  btreeLookup coreborrowBorrowInst.borrow corecmpOrdInst1.cmp m q
 
-/-- [hourglass::validate::queries::ended_before]:
-    Source: 'src/validate.rs', lines 435:4-437:5 -/
-axiom validate.queries.ended_before
-  : world.World → time.EntityId → String → Result Bool
+/-- `BTreeMap::is_empty`: the list has no entry. -/
+def alloc.collections.btree.map.BTreeMap.is_empty
+    {K : Type} {V : Type} {A : Type}
+    (_coreallocAllocatorCloneInst : core.alloc.AllocatorClone A)
+    (m : alloc.collections.btree.map.BTreeMap K V A) : Result Bool :=
+  ok (List.isEmpty (m : List (K × V)))
+
+/-- The place of a variant in the declaration. The derives of
+    `EntityType` compare this number. -/
+def etRank : entity.EntityType → Nat
+  | .Person => 0
+  | .Place => 1
+  | .Thing => 2
+  | .Faction => 3
+
+/-- `EntityType != EntityType`, by the derive. -/
+def entity.EntityType.Insts.CoreCmpPartialEqEntityType.ne
+    (a b : entity.EntityType) : Result Bool :=
+  ok (etRank a != etRank b)
+
+/-- The derive of `Eq` checks nothing at run time. -/
+def entity.EntityType.Insts.CoreCmpEq.assert_fields_are_eq
+    (_ : entity.EntityType) : Result Unit :=
+  ok ()
+
+/-- `<`, `>`, and `>=` on `EntityType`, by the derive: the order of
+    the declaration. -/
+def entity.EntityType.Insts.CoreCmpPartialOrdEntityType.lt
+    (a b : entity.EntityType) : Result Bool :=
+  ok (decide (etRank a < etRank b))
+
+def entity.EntityType.Insts.CoreCmpPartialOrdEntityType.gt
+    (a b : entity.EntityType) : Result Bool :=
+  ok (decide (etRank a > etRank b))
+
+def entity.EntityType.Insts.CoreCmpPartialOrdEntityType.ge
+    (a b : entity.EntityType) : Result Bool :=
+  ok (decide (etRank a ≥ etRank b))
+
+/-- `Ord::max` and `Ord::min`, as std defines them: on a tie, `max`
+    gives the second value and `min` gives the first. -/
+def entity.EntityType.Insts.CoreCmpOrd.max
+    (a b : entity.EntityType) : Result entity.EntityType :=
+  ok (if etRank a > etRank b then a else b)
+
+def entity.EntityType.Insts.CoreCmpOrd.min
+    (a b : entity.EntityType) : Result entity.EntityType :=
+  ok (if etRank a > etRank b then b else a)
+
+/-! ## The one query of the gate with a model body
+
+`validate` translates in full, except `validate::queries::blank`.
+`trim` is not in the Aeneas library, so the model states what
+`trim().is_empty()` means: every char is Unicode `White_Space`, the
+set of `char::is_whitespace`. The test `blank_follows_the_model` in
+`src/validate.rs` checks the list below against the Rust code. -/
+
+/-- The Unicode `White_Space` chars, as `char::is_whitespace` lists them. -/
+def rustWhiteSpace (c : Char) : Bool :=
+  let n := c.toNat
+  (0x09 ≤ n ∧ n ≤ 0x0D) || n = 0x20 || n = 0x85 || n = 0xA0 || n = 0x1680 ||
+  (0x2000 ≤ n ∧ n ≤ 0x200A) || n = 0x2028 || n = 0x2029 || n = 0x202F ||
+  n = 0x205F || n = 0x3000
+
+/-- [hourglass::validate::queries::blank]: a name with nothing in it
+    but white space. -/
+def validate.queries.blank (s : String) : Result Bool :=
+  ok (s.toList.all rustWhiteSpace)

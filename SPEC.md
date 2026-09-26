@@ -8,7 +8,7 @@ the containment queries, `validate` with every rejection, and
 `brief`. It holds two parts more, because the first consumer
 asked for them: the memory of a run (`memory.rs`) and the schema
 that grows (`migrate.rs`). A `verify` referee folds the history a
-second time and checks twelve invariants. Sixty-six tests pass,
+second time and checks twelve invariants. Sixty-nine tests pass,
 and ten Kani harnesses prove the join laws per value, the direction
 law, and the band laws. `merge` applies the join name by name.
 Aeneas translates the scalar core and the record merge to Lean.

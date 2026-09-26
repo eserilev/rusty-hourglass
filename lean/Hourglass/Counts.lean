@@ -184,8 +184,6 @@ theorem start_count_clean {w : World} {who : time.EntityId} {nm : String} {v : O
   have p6 : out6.val <+: out4.val := grows_of (by grows) h4
   have e6 := nil_of_prefix_nil p6 e4
   rw [bind_eq_ok] at h6
-  obtain ⟨_, _, h6⟩ := h6
-  rw [bind_eq_ok] at h6
   obtain ⟨out7, _, h6⟩ := h6
   exact counts_targets_clean h6 e6 rfl hL hone hL1
 
@@ -875,8 +873,6 @@ theorem start_holders_clean {w : World} {who : time.EntityId} {nm : String} {v :
   have hr6 : out6.val <+: out6.val := List.prefix_refl _
   have p6 : out6.val <+: out4.val := grows_of (by grows) h4
   have e6 := nil_of_prefix_nil p6 e4
-  rw [bind_eq_ok] at h6
-  obtain ⟨_, _, h6⟩ := h6
   rw [bind_eq_ok] at h6
   obtain ⟨out7, _, h6⟩ := h6
   exact counts_holders_clean h6 e6 rfl hL

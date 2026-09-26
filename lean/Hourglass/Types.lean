@@ -29,6 +29,14 @@ namespace hourglass
 structure core.alloc.AllocatorClone (Self : Type) where
   cloneCloneInst : core.clone.Clone Self
 
+/-- Trait declaration: [core::borrow::Borrow]
+    Source: '/rustc/library/core/src/borrow.rs', lines 158:0-158:40
+    Name pattern: [core::borrow::Borrow]
+    Visibility: public -/
+@[rust_trait "core::borrow::Borrow"]
+structure core.borrow.Borrow (Self : Type) (Borrowed : Type) where
+  borrow : Self → Result Borrowed
+
 /-- [hourglass::entity::EntityType]
     Source: 'src/entity.rs', lines 19:0-24:1
     Visibility: public -/
@@ -65,7 +73,7 @@ def time.EntityId := Std.U32
 def time.EventId := Std.U64
 
 /-- [hourglass::fact::Fact]
-    Source: 'src/fact.rs', lines 348:0-358:1
+    Source: 'src/fact.rs', lines 354:0-364:1
     Visibility: public -/
 structure fact.Fact where
   «name» : String
@@ -84,7 +92,7 @@ structure entity.Entity where
   facts : alloc.vec.Vec fact.Fact
 
 /-- [hourglass::event::EventKind]
-    Source: 'src/event.rs', lines 31:0-58:1
+    Source: 'src/event.rs', lines 44:0-71:1
     Visibility: public -/
 @[discriminant isize]
 inductive event.EventKind where
@@ -114,7 +122,7 @@ inductive event.EventKind where
   event.EventKind
 
 /-- [hourglass::event::Event]
-    Source: 'src/event.rs', lines 18:0-22:1
+    Source: 'src/event.rs', lines 31:0-35:1
     Visibility: public -/
 structure event.Event where
   id : time.EventId
@@ -122,20 +130,20 @@ structure event.Event where
   kind : event.EventKind
 
 /-- [hourglass::event::EventHistory]
-    Source: 'src/event.rs', lines 102:0-102:36
+    Source: 'src/event.rs', lines 115:0-115:36
     Visibility: public -/
 @[reducible]
 def event.EventHistory := alloc.vec.Vec event.Event
 
 /-- [hourglass::fact::Band]
-    Source: 'src/fact.rs', lines 43:0-46:1
+    Source: 'src/fact.rs', lines 49:0-52:1
     Visibility: public -/
 structure fact.Band where
   min : Std.I64
   max : Std.I64
 
 /-- [hourglass::fact::Direction]
-    Source: 'src/fact.rs', lines 96:0-105:1
+    Source: 'src/fact.rs', lines 102:0-111:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.Direction where
@@ -144,7 +152,7 @@ inductive fact.Direction where
 | Free : fact.Direction
 
 /-- [hourglass::fact::Shape]
-    Source: 'src/fact.rs', lines 147:0-154:1
+    Source: 'src/fact.rs', lines 153:0-160:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.Shape where
@@ -152,7 +160,7 @@ inductive fact.Shape where
 | Number : fact.Band → fact.Direction → fact.Shape
 
 /-- [hourglass::fact::Count]
-    Source: 'src/fact.rs', lines 213:0-217:1
+    Source: 'src/fact.rs', lines 219:0-223:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.Count where
@@ -161,7 +169,7 @@ inductive fact.Count where
 | AtMost : Std.U16 → fact.Count
 
 /-- [hourglass::fact::FactRules]
-    Source: 'src/fact.rs', lines 242:0-256:1
+    Source: 'src/fact.rs', lines 248:0-262:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.FactRules where
@@ -175,7 +183,7 @@ inductive fact.FactRules where
   fact.FactRules
 
 /-- [hourglass::fact::FactVocabulary]
-    Source: 'src/fact.rs', lines 374:0-377:1
+    Source: 'src/fact.rs', lines 380:0-383:1
     Visibility: public -/
 structure fact.FactVocabulary where
   version : Std.U32
