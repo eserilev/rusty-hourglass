@@ -185,13 +185,18 @@ does not translate yet:
 The entity map also needs a wrapper like `Names`, keyed by
 `EntityId`.
 
-## Three issues for upstream
+## Known Aeneas limits
 
-1. Without `--duplicate-defaulted-methods`, Aeneas passes a whole
-   `PartialOrd` instance to `core.cmp.PartialOrd.lt.default`, but
-   the Lean library takes only the `partial_cmp` function. The
-   generated Lean does not build. `Tick < Tick` shows it.
-2. Several spots in rung 4 fail with "Internal error: please file
-   an issue". File them with a minimal case when rung 4 starts.
-3. A local variable with the name of a module (for example `event`)
-   hides the module in the generated Lean.
+Each limit has a workaround in the code. Keep the workarounds.
+
+1. **`PartialOrd` default methods.** Without
+   `--duplicate-defaulted-methods`, the generated Lean for
+   `Tick < Tick` does not build. `extract.sh` sets the flag.
+2. **A local with the name of a module.** A local named `event` hides
+   the module `event` in the generated Lean. Name locals `ev`, `out`,
+   and the like.
+3. **An `if` in a loop that holds a borrow.** Aeneas stops with
+   "Could not match the contexts". Move the loop body into a method.
+   `World::replay_one` shows the form.
+4. **Internal errors.** Some spots of the rung 4 map stop Aeneas
+   with an internal error. Rewrite the spot in a simpler form.

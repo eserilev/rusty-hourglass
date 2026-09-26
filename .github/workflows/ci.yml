@@ -1,0 +1,83 @@
+# CI: the tests, the Kani harnesses, the Lean proofs, and the
+# extraction check. The extraction check fails when the committed Lean
+# differs from what Aeneas makes from the current Rust, so a proof
+# never speaks about old code.
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test
+      - run: cargo clippy --all-targets -- -D warnings
+
+  kani:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: model-checking/kani-github-action@v1
+
+  lean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - uses: actions/cache@v4
+        with:
+          path: lean/.lake
+          key: lake-${{ hashFiles('lean/lake-manifest.json', 'lean/lean-toolchain', 'lean/lakefile.toml') }}
+      - name: Build the proofs
+        working-directory: lean
+        run: |
+          lake exe cache get
+          lake build
+
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read the Aeneas pin
+        id: pin
+        run: echo "rev=$(sed -n 's/^rev = "\(.*\)"/\1/p' lean/lakefile.toml)" >> "$GITHUB_OUTPUT"
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.0
+      - uses: actions/cache@v4
+        id: aeneas-cache
+        with:
+          path: ~/aeneas
+          key: aeneas-${{ steps.pin.outputs.rev }}-v1
+      - name: Build Aeneas and Charon at the pin
+        if: steps.aeneas-cache.outputs.cache-hit != 'true'
+        run: |
+          opam install -y calendar core_unix domainslib easy_logging menhir \
+            ocamlformat.0.27.0 ocamlgraph odoc ppx_deriving ppx_deriving_yojson \
+            progress unionFind visitors yojson zarith
+          git clone https://github.com/AeneasVerif/aeneas.git ~/aeneas
+          cd ~/aeneas
+          git checkout "${{ steps.pin.outputs.rev }}"
+          opam exec -- make setup-charon
+          opam exec -- make
+      - name: Install the Charon toolchain
+        run: |
+          channel=$(sed -n 's/^channel = "\(.*\)"/\1/p' ~/aeneas/charon/rust-toolchain)
+          rustup toolchain install "$channel" --profile minimal \
+            --component rustc-dev,llvm-tools,rust-src
+      - name: Extract, and compare with the committed Lean
+        run: |
+          AENEAS=~/aeneas lean/extract.sh
+          git diff --exit-code -- lean/Hourglass/Types.lean lean/Hourglass/Funs.lean

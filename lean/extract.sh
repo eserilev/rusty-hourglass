@@ -61,3 +61,19 @@ for f in TypesExternal FunsExternal; do
     cp "$src" "$here/Hourglass/$f.lean"
   fi
 done
+
+# Every item of the templates needs an entry in the model: a body, or
+# for the two opaque crate functions, an axiom. A missing item fails
+# the run, so a new std call never slips in as an unchecked axiom.
+missing=0
+for tpl in "$work"/out/Hourglass/*_Template.lean; do
+  [ -f "$tpl" ] || continue
+  for name in $(grep -hoE '^axiom [^ ]+' "$tpl" | cut -d' ' -f2); do
+    if ! grep -qE "^(def|abbrev|axiom) ${name//./\\.}( |$)" \
+        "$here/Hourglass/FunsExternal.lean" "$here/Hourglass/TypesExternal.lean"; then
+      echo "missing in the model: $name" >&2
+      missing=1
+    fi
+  done
+done
+exit "$missing"
