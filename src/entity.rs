@@ -9,7 +9,7 @@
 //! An entity stays in the state after it dies. The history names
 //! it, and other facts point at it. Only its `existence` closes.
 
-use crate::fact::{Fact, LOCATED_IN};
+use crate::fact::{is_located_in, Fact};
 use crate::time::{EntityId, Tick, TimeSpan};
 use serde::{Deserialize, Serialize};
 
@@ -96,9 +96,13 @@ impl Entity {
     /// Where this entity sits right now. `located_in` allows one
     /// target at a time, so at most one fact answers.
     pub fn location(&self) -> Option<EntityId> {
-        self.facts
-            .iter()
-            .find(|f| f.name == LOCATED_IN)
-            .and_then(|f| f.linked_to)
+        let mut i = 0;
+        while i < self.facts.len() {
+            if is_located_in(&self.facts[i].name) {
+                return self.facts[i].linked_to;
+            }
+            i += 1;
+        }
+        None
     }
 }

@@ -110,4 +110,4 @@ pub use reject::{Contradiction, Malformed, Migration, Rejection, Unmergeable};
 pub use time::{EntityId, EventId, Tick, TimeSpan};
 pub use validate::{validate, vocabulary_sound};
 pub use verify::verify;
-pub use world::{World, MAX_HOPS};
+pub use world::World;

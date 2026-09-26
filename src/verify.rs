@@ -29,7 +29,7 @@ use crate::entity::EntityType;
 use crate::event::EventKind;
 use crate::fact::{FactRules, Shape, LOCATED_IN};
 use crate::time::{EntityId, EventId, Tick};
-use crate::world::{World, MAX_HOPS};
+use crate::world::World;
 use std::collections::{BTreeMap, BTreeSet};
 
 /// One row of the referee state. A tuple list, not the struct of
@@ -276,12 +276,13 @@ fn sound(world: &World) -> bool {
     true
 }
 
-/// Invariant 8, walked with its own visited set.
+/// Invariant 8, walked with its own visited set. The set stops the
+/// walk, so a long chain walks to its end.
 fn walk_is_finite(world: &World, start: EntityId) -> bool {
     let mut seen: BTreeSet<EntityId> = BTreeSet::new();
     seen.insert(start);
     let mut at = start;
-    for _ in 0..MAX_HOPS {
+    loop {
         let Some(row) = world.entity(at) else {
             return true;
         };
@@ -296,5 +297,4 @@ fn walk_is_finite(world: &World, start: EntityId) -> bool {
         }
         at = next;
     }
-    false
 }

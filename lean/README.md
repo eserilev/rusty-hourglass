@@ -4,8 +4,8 @@ Aeneas translates the Rust code of the crate into pure Lean
 functions. The theorems in `Hourglass/Laws.lean`,
 `Hourglass/Merge.lean`, `Hourglass/World.lean`,
 `Hourglass/Apply.lean`, `Hourglass/Gate.lean`,
-`Hourglass/Direction.lean`, and `Hourglass/Counts.lean` are about
-those functions. A theorem holds
+`Hourglass/Direction.lean`, `Hourglass/Counts.lean`, and
+`Hourglass/Cycle.lean` are about those functions. A theorem holds
 for every input, with no bound. Kani checks the rung 1 laws in
 `src/proofs.rs`, but only up to its bounds.
 
@@ -135,6 +135,22 @@ A limit of one target is the single-target law of rung 4a. The
 holder check and the target check compare `len >= limit`, with no
 add, so the Rust code has no overflow at the limit.
 
+## What is proved: rung 7, no place inside itself
+
+| Theorem | The law |
+|---|---|
+| `every_proposed_world_acyclic` | In a world that proposals build from an empty world, a walk up the `located_in` chain of one step or more never comes back to its start. |
+| `no_place_inside_itself` | The same law as a relation: no entity sits inside itself through any chain of places. |
+| `apply_acyc` | One event with a clean gate closes no ring. |
+| `acyc_link` | A new step from `who` to `tgt` closes no ring when no walk from `tgt` meets `who`. |
+| `walk_le_size` | In a world with no ring, a walk of `j` steps passes `j` different entities. So `j` is at most the number of entities. |
+| `start_cycle_clean` | A start of `located_in` with no fault has a target whose walk never meets the entity, for every walk up to the number of entities. |
+| `loc_test` | The name test of the gate and of `location` says `true` exactly for `located_in`. |
+
+The law holds for a vocabulary that declares `located_in` with one
+target, as `FactVocabulary::new` does. `vocabulary_sound` refuses any
+other rules for the name.
+
 ## What you trust
 
 1. **Charon and Aeneas.** A bug in the translation makes the Lean
@@ -147,6 +163,8 @@ add, so the Rust code has no overflow at the limit.
      `String::clone`, `Vec::is_empty`, `Vec::truncate`,
      `Vec::default`, and `std::mem::take`.
    - `String` equality and `Vec::remove`.
+   - `String` as `&str`, and `str` equality. The model of a `str` is
+     its UTF-8 bytes, and the compare is on the bytes, as in Rust.
    - The map inside `FactRules`. No law reads it, so its model is a
      plain list.
    - `Ids<V>` (`src/ids.rs`), the entity map of the world. Its model
@@ -163,11 +181,16 @@ add, so the Rust code has no overflow at the limit.
 4. **The three standard axioms of Lean.** `Hourglass/Trust.lean`
    pins the axioms of each theorem with `#guard_msgs`. A `sorry` or
    a new axiom fails the build. The model files hold definitions
-   only, with one exception: the five world queries of the gate
+   only, with one exception: the three world queries of the gate
    (`validate::queries`). They are axioms with no body, and only the
    pins of the laws that read `validate` name them. An axiom that
    only names a function of an inhabited type cannot make the logic
    inconsistent.
+5. **One native check.** Aeneas writes the constant `LOCATED_IN`
+   with `toStr`, and `toStr` proves that the string fits a `u32`
+   length with `decide +native`. So the pins of the rung 7 laws
+   name `fact.LOCATED_IN._native.decide.ax_1`. It trusts the Lean
+   compiler to count the ten bytes of `located_in`.
 
 ## How to run
 
@@ -272,15 +295,28 @@ ids of the world with `Ids::ids`, and `targets_except` walks the
 facts of the holder. Both are index loops. `Ids::ids` has a model and
 a proptest.
 
-What waits: no cycle in `located_in`. This law reads the remaining
-queries, so those must translate first:
+### Rung 7: the ring check (BUILT)
+
+The ring check `would_cycle` translates, and the proof found a bug in
+it. The old walk stopped after 1024 hops and answered "no ring". So
+the gate let a ring through when the chain held more than 1024
+places. The referee `verify` had the same cap, and it called a sound
+chain of that length unsound. The test
+`a_ring_longer_than_any_cap_is_refused` holds both cases.
+
+The new walk has no cap and no set. It walks at most `len` hops. In a
+world with no ring, a walk that meets the entity meets it within
+`len` hops (`walk_le_size`). `Entity::location` is an index loop, and
+`is_located_in` compares two `str` values, because Aeneas cannot
+translate a compare of `String` with `&str`.
+
+What waits: no law reads the remaining code yet.
 
 | Group | Where | The fix |
 |---|---|---|
 | A `&'static str` label, and the text of a rejection | `EntityType::label`, `EventKind` label, `Direction::label`, `Shape::label`, `reject.rs` lines 221 and 326 | None. These are text, and no law reads them. Keep them out of the marks. |
-| A `&str` operation | `queries::blank` (`trim`), `queries::is_located_in` (a compare with `LOCATED_IN`) | A model for the two operations on `Str`, or a `String` constant. |
-| An iterator chain with a closure | `Entity::fact`, `Entity::location`, `World::contents`, `holders_of`, `targets_of`, `facts_linked_to`, `ever_ended`, `memory_names` | Write each one as an explicit loop over the wrapper walk. |
-| A walk with a `BTreeSet` | `World::would_cycle` | A wrapper for the set, like `Ids`. |
+| A `&str` operation | `queries::blank` (`trim`) | A model for `trim` on `Str`. |
+| An iterator chain with a closure | `Entity::fact`, `World::contents`, `holders_of`, `targets_of`, `facts_linked_to`, `ever_ended`, `memory_names` | Write each one as an explicit loop over the wrapper walk. |
 | A closure that captures `&mut self` | `World::propose_all` | A loop that calls `propose`. |
 | A return inside a nested loop | `verify::same_state`, `verify::sound` | Move the inner loop into a helper function that returns a flag. |
 

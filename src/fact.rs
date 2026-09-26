@@ -31,6 +31,12 @@ use std::collections::BTreeMap;
 /// never types it and never misspells it (spec decision 32).
 pub const LOCATED_IN: &str = "located_in";
 
+/// Is this name `located_in`? The compare is on two `str` values,
+/// because Aeneas cannot translate a compare of `String` with `&str`.
+pub(crate) fn is_located_in(name: &str) -> bool {
+    *name == *LOCATED_IN
+}
+
 /// A whole-number band, closed at both ends. Every number a fact
 /// holds sits inside the band of its name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -14,7 +14,7 @@
 //! can prevent. Ashford already has a king. Ada is dead.
 
 use crate::event::EventKind;
-use crate::fact::{Count, Fact, FactRules, FactVocabulary, Shape, LOCATED_IN};
+use crate::fact::{is_located_in, Count, Fact, FactRules, FactVocabulary, Shape, LOCATED_IN};
 use crate::reject::{Contradiction, Malformed, Rejection};
 use crate::time::{EntityId, Tick};
 use crate::world::{name_index, single_target, slot_index, World};
@@ -114,8 +114,8 @@ fn start(
             push_all(out, &queries::type_faults(w, who, name, rules, target));
             counts_fit(w, who, name, rules, target, out);
         }
-        if queries::is_located_in(name) {
-            if let Some(through) = queries::cycle_through(w, who, target) {
+        if is_located_in(name) {
+            if let Some(through) = w.would_cycle(who, target) {
                 out.push(Rejection::Contradiction(Contradiction::Cycle {
                     entity: who,
                     through,
@@ -399,7 +399,7 @@ fn target_fits(
 /// holds for every answer these queries give.
 mod queries {
     use super::types_fit;
-    use crate::fact::{FactRules, LOCATED_IN};
+    use crate::fact::FactRules;
     use crate::reject::Rejection;
     use crate::time::EntityId;
     use crate::world::World;
@@ -408,15 +408,6 @@ mod queries {
     #[allow(clippy::ptr_arg)]
     pub(super) fn blank(name: &String) -> bool {
         name.trim().is_empty()
-    }
-
-    #[allow(clippy::ptr_arg)]
-    pub(super) fn is_located_in(name: &String) -> bool {
-        name == LOCATED_IN
-    }
-
-    pub(super) fn cycle_through(w: &World, who: EntityId, target: EntityId) -> Option<EntityId> {
-        w.would_cycle(who, target)
     }
 
     #[allow(clippy::ptr_arg)]

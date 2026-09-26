@@ -1,4 +1,4 @@
--- The rung 5 count laws: a name never has more targets, or more
+-- The rung 6 count laws: a name never has more targets, or more
 -- holders, than its count allows, in every world that proposals build.
 import Hourglass.Direction
 

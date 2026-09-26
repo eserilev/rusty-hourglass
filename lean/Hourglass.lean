@@ -7,4 +7,5 @@ import Hourglass.Apply
 import Hourglass.Gate
 import Hourglass.Direction
 import Hourglass.Counts
+import Hourglass.Cycle
 import Hourglass.Trust

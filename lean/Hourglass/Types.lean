@@ -65,7 +65,7 @@ def time.EntityId := Std.U32
 def time.EventId := Std.U64
 
 /-- [hourglass::fact::Fact]
-    Source: 'src/fact.rs', lines 342:0-352:1
+    Source: 'src/fact.rs', lines 348:0-358:1
     Visibility: public -/
 structure fact.Fact where
   «name» : String
@@ -128,14 +128,14 @@ structure event.Event where
 def event.EventHistory := alloc.vec.Vec event.Event
 
 /-- [hourglass::fact::Band]
-    Source: 'src/fact.rs', lines 37:0-40:1
+    Source: 'src/fact.rs', lines 43:0-46:1
     Visibility: public -/
 structure fact.Band where
   min : Std.I64
   max : Std.I64
 
 /-- [hourglass::fact::Direction]
-    Source: 'src/fact.rs', lines 90:0-99:1
+    Source: 'src/fact.rs', lines 96:0-105:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.Direction where
@@ -144,7 +144,7 @@ inductive fact.Direction where
 | Free : fact.Direction
 
 /-- [hourglass::fact::Shape]
-    Source: 'src/fact.rs', lines 141:0-148:1
+    Source: 'src/fact.rs', lines 147:0-154:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.Shape where
@@ -152,7 +152,7 @@ inductive fact.Shape where
 | Number : fact.Band → fact.Direction → fact.Shape
 
 /-- [hourglass::fact::Count]
-    Source: 'src/fact.rs', lines 207:0-211:1
+    Source: 'src/fact.rs', lines 213:0-217:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.Count where
@@ -161,7 +161,7 @@ inductive fact.Count where
 | AtMost : Std.U16 → fact.Count
 
 /-- [hourglass::fact::FactRules]
-    Source: 'src/fact.rs', lines 236:0-250:1
+    Source: 'src/fact.rs', lines 242:0-256:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.FactRules where
@@ -175,7 +175,7 @@ inductive fact.FactRules where
   fact.FactRules
 
 /-- [hourglass::fact::FactVocabulary]
-    Source: 'src/fact.rs', lines 368:0-371:1
+    Source: 'src/fact.rs', lines 374:0-377:1
     Visibility: public -/
 structure fact.FactVocabulary where
   version : Std.U32
@@ -304,7 +304,7 @@ inductive reject.Rejection where
 | Contradiction : reject.Contradiction → reject.Rejection
 
 /-- [hourglass::world::World]
-    Source: 'src/world.rs', lines 59:0-64:1
+    Source: 'src/world.rs', lines 54:0-59:1
     Visibility: public -/
 structure world.World where
   tick : time.Tick

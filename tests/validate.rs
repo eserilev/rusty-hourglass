@@ -376,6 +376,40 @@ fn a_ring_of_places_is_refused() {
     assert!(verify(&w));
 }
 
+/// A walk with a hop cap let this ring through: a chain longer than
+/// the cap answered "no cycle". The chain here is longer than 1024.
+#[test]
+fn a_ring_longer_than_any_cap_is_refused() {
+    let mut w = World::new(dungeon());
+    let places: Vec<EntityId> = (0..1100).map(EntityId).collect();
+    for &id in &places {
+        w.propose(
+            Tick(1),
+            EventKind::EntityCreated {
+                id,
+                entity_type: EntityType::Place,
+                name: format!("place {}", id.0),
+            },
+        )
+        .expect("a new place is legal");
+    }
+    for pair in places.windows(2) {
+        w.propose(Tick(2), start(pair[0], LOCATED_IN, None, Some(pair[1])))
+            .expect("a chain of places is legal");
+    }
+    // A long chain is sound: the referee walks it to the end.
+    assert!(verify(&w));
+    let last = places[places.len() - 1];
+    let faults = refuse(&mut w, start(last, LOCATED_IN, None, Some(places[0])));
+    assert_eq!(
+        faults,
+        vec![Rejection::Contradiction(Contradiction::Cycle {
+            entity: last,
+            through: last,
+        })]
+    );
+}
+
 #[test]
 fn a_second_king_is_refused_and_names_the_first() {
     let mut w = cast();

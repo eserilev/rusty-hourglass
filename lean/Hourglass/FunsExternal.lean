@@ -158,6 +158,19 @@ def alloc.collections.btree.map.BTreeMap.Insts.CoreCloneClone.clone
 def alloc.string.String.Insts.CoreCmpPartialEqString.eq (a b : String) : Result Bool :=
   ok (decide (a = b))
 
+/-- `String` as `&str`: the UTF-8 bytes of the string. A Rust string
+    holds at most `isize::MAX` bytes, so the bound always holds. -/
+@[rust_fun "alloc::string::{core::ops::deref::Deref<alloc::string::String, str>}::deref"]
+def alloc.string.String.Insts.CoreOpsDerefDerefStr.deref (s : String) : Result Str :=
+  let l : List U8 := s.toByteArray.toList.map
+    (fun x => UScalar.ofNatCore x.toNat (by have := x.toNat_lt; simpa using this))
+  if h : l.length ≤ Usize.max then ok (Slice.from l h) else fail .panic
+
+/-- `str == str` compares the bytes. -/
+@[rust_fun "core::str::traits::{core::cmp::PartialEq<str, str>}::eq"]
+def Str.Insts.CoreCmpPartialEqStr.eq (a b : Str) : Result Bool :=
+  ok (decide (a = b))
+
 /-- `Vec::remove(i)` takes the item at `i` out and shifts the rest
     left. It panics when `i` is not below the length. -/
 @[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::remove"]
@@ -217,6 +230,12 @@ def ids.Ids.ids {V : Type} (m : ids.Ids V) : Result (alloc.vec.Vec time.EntityId
     if h : k < 2 ^ UScalarTy.U32.numBits then some (UScalar.ofNatCore k h) else none)
   if h : l.length ≤ Usize.max then ok (alloc.vec.Vec.from l h) else fail .panic
 
+/-- `Ids::len` is the number of ids in the map. -/
+def ids.Ids.len {V : Type} (m : ids.Ids V) : Result Std.Usize :=
+  if h : Std.ExtTreeMap.size m < 2 ^ UScalarTy.Usize.numBits then
+    ok (UScalar.ofNatCore _ h)
+  else fail .panic
+
 /-! ## The world queries of the gate, opaque on purpose
 
 `validate` translates in full, except these queries (the module
@@ -229,17 +248,6 @@ inconsistent. Trust.lean pins exactly which laws use them. -/
 /-- [hourglass::validate::queries::blank]:
     Source: 'src/validate.rs', lines 362:4-364:5 -/
 axiom validate.queries.blank : String → Result Bool
-
-/-- [hourglass::validate::queries::is_located_in]:
-    Source: 'src/validate.rs', lines 367:4-369:5 -/
-axiom validate.queries.is_located_in : String → Result Bool
-
-/-- [hourglass::validate::queries::cycle_through]:
-    Source: 'src/validate.rs', lines 371:4-373:5 -/
-axiom validate.queries.cycle_through
-  :
-  world.World → time.EntityId → time.EntityId → Result (Option
-    time.EntityId)
 
 /-- [hourglass::validate::queries::type_faults]:
     Source: 'src/validate.rs', lines 376:4-386:5 -/

@@ -48,11 +48,6 @@ use crate::validate;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
-/// The hop cap of a walk up the location chain. A sound world
-/// never reaches it, because `validate` refuses a cycle. A world
-/// built by `commit` alone can hold one, so every walk stops.
-pub const MAX_HOPS: usize = 1024;
-
 /// The tick, the vocabulary, the entities, and the history. The
 /// whole thing.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -312,10 +307,7 @@ impl World {
         let mut seen = BTreeSet::new();
         seen.insert(id);
         let mut at = id;
-        for _ in 0..MAX_HOPS {
-            let Some(up) = self.entities.get(at).and_then(|e| e.location()) else {
-                break;
-            };
+        while let Some(up) = self.location_of(at) {
             if !seen.insert(up) {
                 break;
             }
@@ -325,22 +317,33 @@ impl World {
         out
     }
 
-    /// Would this move put a place inside itself? The answer
-    /// names the entity on the chain that already sits inside the
-    /// one that is moving.
+    /// Would this move put the entity inside itself? The walk goes
+    /// up from the target, and the answer is the entity when the walk
+    /// meets it.
+    ///
+    /// The walk needs no set and no cap. Each stop after the first is
+    /// an entity of the map. So a walk that meets the entity meets it
+    /// within `len` hops. A longer walk turns in a ring without it.
+    #[allow(clippy::question_mark)]
     pub fn would_cycle(&self, entity: EntityId, target: EntityId) -> Option<EntityId> {
+        let n = self.entities.len();
         let mut at = target;
-        let mut seen = BTreeSet::new();
-        for _ in 0..MAX_HOPS {
+        let mut hops = 0;
+        while hops < n {
             if at == entity {
                 return Some(at);
             }
-            if !seen.insert(at) {
-                return None;
+            match self.location_of(at) {
+                Some(up) => at = up,
+                None => return None,
             }
-            at = self.entities.get(at).and_then(|e| e.location())?;
+            hops += 1;
         }
-        None
+        if at == entity {
+            Some(at)
+        } else {
+            None
+        }
     }
 
     /// Every fact anywhere that points at this entity, with the
@@ -400,7 +403,10 @@ impl World {
     /// The place a name reserves. `located_in` is the one name
     /// the crate declares, so the crate answers this itself.
     pub fn location_of(&self, id: EntityId) -> Option<EntityId> {
-        self.entities.get(id).and_then(|e| e.location())
+        match self.entities.get(id) {
+            Some(e) => e.location(),
+            None => None,
+        }
     }
 
     /// What the crate hands the director: the entities that
