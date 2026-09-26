@@ -2,8 +2,9 @@
 
 Aeneas translates the Rust code of the crate into pure Lean
 functions. The theorems in `Hourglass/Laws.lean`,
-`Hourglass/Merge.lean`, `Hourglass/World.lean`, and
-`Hourglass/Apply.lean` are about those functions. A theorem holds
+`Hourglass/Merge.lean`, `Hourglass/World.lean`,
+`Hourglass/Apply.lean`, and `Hourglass/Gate.lean` are about those
+functions. A theorem holds
 for every input, with no bound. Kani checks the rung 1 laws in
 `src/proofs.rs`, but only up to its bounds.
 
@@ -67,11 +68,9 @@ The laws have three conditions:
 | `reach_propose` | So a world that any mix of proposals and commits built also replays exactly. |
 | `replay_one_of_commit` | One step of replay on the event of a commit gives the world of that commit. |
 
-The laws about `propose` hold for every `validate`: they are about
-the discipline of the history, not about the rules inside `validate`.
-So `validate` stays opaque, and Aeneas sees only its type. `apply`
-receives only the entity map and the vocabulary, so it cannot touch
-the history or the tick.
+The laws about `propose` hold for every answer of the world queries
+of the gate (see rung 4b). `apply` receives only the entity map and
+the vocabulary, so it cannot touch the history or the tick.
 
 ## What is proved: rung 4a, the rules inside `apply`
 
@@ -86,6 +85,23 @@ the history or the tick.
 
 These laws hold with or without `validate`. They are about `apply`
 alone.
+
+## What is proved: rung 4b, the rules inside `validate`
+
+| Theorem | The law |
+|---|---|
+| `every_proposed_world_in_band` | In every world that proposals build from an empty world, every fact carries a declared name, a flag holds no number, and a number sits inside the band of its name. |
+| `validate_clean` | A gate with no fault passes only a clean event: a start names a declared fact with a value that fits its shape, and an update names a declared number fact with a new value in its band. |
+| `start_clean` and `update_clean` | The same, for each branch of the gate. |
+| `apply_in_band` | `apply` keeps every value in its band, for a clean event. |
+| `reachP_reach` | A world that proposals build is also a world that commits build. So the laws of rungs 3 and 4a hold for it too. |
+
+`validate` translates in full, except the module `validate::queries`.
+Each query only reads the world and answers a value, for example a
+bool or the faults of the count check. No query touches the list of
+faults, and each fault only adds to the list. So "no fault at the
+end" means "no band fault", for every answer of the queries. The
+pins name the queries that each law reads.
 
 ## What you trust
 
@@ -115,10 +131,11 @@ alone.
 4. **The three standard axioms of Lean.** `Hourglass/Trust.lean`
    pins the axioms of each theorem with `#guard_msgs`. A `sorry` or
    a new axiom fails the build. The model files hold definitions
-   only, with one exception: the crate function `validate`. It is an
-   axiom with no body, and only the pins of the `propose` laws name
-   it. An axiom that only names a function of an inhabited type
-   cannot make the logic inconsistent.
+   only, with one exception: the eight world queries of the gate
+   (`validate::queries`). They are axioms with no body, and only the
+   pins of the laws that read `validate` name them. An axiom that
+   only names a function of an inhabited type cannot make the logic
+   inconsistent.
 
 ## How to run
 
@@ -198,20 +215,33 @@ possible, with the same behavior:
    order and copies nothing. `iter_mut().find` is an index loop.
 3. `get_mut` is `take`, a change, and `insert`.
 
-### Rung 4b: the rules inside `validate`
+### Rung 4b: the rules inside `validate` (BUILT: the band law)
 
-For example: no cycle in `located_in`, and every event in a history
-passes `validate` at its time. These laws read the body of
-`validate`, so the code needs changes first. A full run of the crate
-shows these groups of code that Aeneas does not translate yet:
+Three Rust changes made `validate` translate, with the same faults in
+the same order:
+
+1. The helpers take the name as `&String`, and the locals avoid the
+   module names: the world is `w`, and the entity is `who`.
+2. The world queries moved into `validate::queries`. A query answers
+   a value and never receives the list of faults. `type_faults` and
+   `count_faults` answer their own list, and `push_all` adds it in the
+   same place as before.
+3. `Ids::get` has a model.
+
+### Rung 5: the world queries
+
+For example: no cycle in `located_in`, the direction of a start
+against the fact it meets, and the counts of holders and targets.
+These laws read the queries, so the queries must translate first:
 
 | Group | Where | The fix |
 |---|---|---|
 | A `&'static str` label, and the text of a rejection | `EntityType::label`, `EventKind` label, `Direction::label`, `Shape::label`, `reject.rs` lines 221 and 326 | None. These are text, and no law reads them. Keep them out of the marks. |
-| An iterator chain with a closure | `Entity::fact`, `Entity::location`, `World::contents`, `holders_of`, `targets_of`, `facts_linked_to`, `memory_names` | Write each one as an explicit loop over the wrapper walk. |
+| A `&str` operation | `queries::blank` (`trim`), `queries::is_located_in` (a compare with `LOCATED_IN`) | A model for the two operations on `Str`, or a `String` constant. |
+| An iterator chain with a closure | `Entity::fact`, `Entity::location`, `World::contents`, `holders_of`, `targets_of`, `facts_linked_to`, `ever_ended`, `memory_names` | Write each one as an explicit loop over the wrapper walk. |
+| A walk with a `BTreeSet` | `World::would_cycle` | A wrapper for the set, like `Ids`. |
 | A closure that captures `&mut self` | `World::propose_all` | A loop that calls `propose`. |
 | A return inside a nested loop | `verify::same_state`, `verify::sound` | Move the inner loop into a helper function that returns a flag. |
-| A borrow shape that Aeneas does not support yet | `validate.rs` lines 96 to 112, 131, 132, 215, and 422 to 449; `memory::writes` | Read each one. Most are a `&mut` borrow held across a call. |
 
 ## Known Aeneas limits
 

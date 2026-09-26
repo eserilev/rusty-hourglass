@@ -12,7 +12,7 @@ second time and checks twelve invariants. Sixty-five tests pass,
 and ten Kani harnesses prove the join laws per value, the direction
 law, and the band laws. `merge` applies the join name by name.
 Aeneas translates the scalar core and the record merge to Lean.
-Thirty Lean theorems hold for every input with no bound
+Thirty-six Lean theorems hold for every input with no bound
 (`lean/README.md`): the ten Kani laws, panic freedom of the join,
 and the record laws. A merge answers the same in either order, and
 it ignores the grouping. A merge with itself or with an empty
@@ -24,7 +24,10 @@ every `validate`: a replay gives the live world, a rewind is exact,
 and a refused proposal changes nothing. Six more hold the rules
 inside `apply` for every world that commits build: one fact per
 slot, one fact per single-target name, and an entity never
-vanishes. No consumer calls the crate yet.
+vanishes. Six more hold the band law of the gate: in every world
+that proposals build, every fact carries a declared name, and every
+number sits inside the band of its name. No consumer calls the
+crate yet.
 
 The build went past the decisions below in eleven places. The
 section "Built past the decisions" names each one. Read that
@@ -1074,7 +1077,7 @@ the poor fits too, so nobody re-litigates them.
 | Prusti | weeks | deductive proofs via Viper annotations | weak: less active than Verus and Creusot, struggles with `String` |
 | Creusot | weeks | full deductive proofs of the invariants, unbounded, via Why3 | strong when needed; research-grade effort |
 | Verus | weeks | same class as Creusot, SMT-based, its own `Map`/`Seq` model types | strong when needed; the code ports into a dialect |
-| Aeneas | weeks | translates the REAL Rust code into pure Lean functions; the Lean proofs hold for every input, with no bound | strong: rungs 1 to 4a are BUILT (`lean/README.md`); the Lean is generated, so it does not drift from the Rust |
+| Aeneas | weeks | translates the REAL Rust code into pure Lean functions; the Lean proofs hold for every input, with no bound | strong: rungs 1 to 4b are BUILT (`lean/README.md`); the Lean is generated, so it does not drift from the Rust |
 | Coq / Lean / Isabelle | months | a hand-written model of the spec plus proofs, or extraction | overkill: the model drifts from the Rust unless someone maintains both |
 
 ### The ladder
@@ -1085,10 +1088,10 @@ the poor fits too, so nobody re-litigates them.
    in one head.
 4. Verus or Creusot only when the shared game-server world makes a
    state divergence expensive.
-5. Aeneas, one rung at a time: the scalar core (BUILT), the record
-   merge behind the map wrapper `Names` (BUILT), the world laws
-   (replay, rewind, and propose: BUILT), the rules inside `apply`
-   (BUILT), and then the rules inside `validate`. `lean/README.md` holds the rungs and the
+5. Aeneas, one rung at a time. The built rungs are the scalar core,
+   the record merge, the world laws, the rules inside `apply`, and
+   the band law of `validate`. Next: the world queries of the gate, for example no
+   cycle in `located_in`. `lean/README.md` holds the rungs and the
    map of the code that does not translate yet.
 
 ## Built past the decisions

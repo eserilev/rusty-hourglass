@@ -49,6 +49,18 @@ def entity.EntityType.Insts.CoreCloneClone : core.clone.Clone entity.EntityType
   clone := entity.EntityType.Insts.CoreCloneClone.clone
 }
 
+/-- [hourglass::time::{hourglass::time::TimeSpan}::ended]:
+    Source: 'src/time.rs', lines 77:4-79:5
+    Visibility: public -/
+def time.TimeSpan.ended (self : time.TimeSpan) : Result Bool := do
+  ok (core.option.Option.is_some self.until)
+
+/-- [hourglass::entity::{hourglass::entity::Entity}::gone]:
+    Source: 'src/entity.rs', lines 71:4-73:5
+    Visibility: public -/
+def entity.Entity.gone (self : entity.Entity) : Result Bool := do
+  time.TimeSpan.ended self.existence
+
 /-- [hourglass::time::{impl core::clone::Clone for hourglass::time::EntityId}::clone]:
     Source: 'src/time.rs', lines 13:4-13:9
     Visibility: public -/
@@ -207,6 +219,13 @@ def fact.Band.inside (self : fact.Band) (other : fact.Band) : Result Bool := do
   if self.min >= other.min
   then ok (self.max <= other.max)
   else ok false
+
+/-- [hourglass::fact::{impl core::clone::Clone for hourglass::fact::Direction}::clone]:
+    Source: 'src/fact.rs', lines 89:9-89:14
+    Visibility: public -/
+def fact.Direction.Insts.CoreCloneClone.clone
+  (self : fact.Direction) : Result fact.Direction := do
+  ok self
 
 /-- [hourglass::fact::{hourglass::fact::Direction}::allows]:
     Source: 'src/fact.rs', lines 104:4-110:5
@@ -639,6 +658,175 @@ def memory.merge
     ok (core.result.Result.Ok out2)
   else ok (core.result.Result.Err faults1)
 
+/-- [hourglass::time::{impl core::clone::Clone for hourglass::time::Tick}::clone]:
+    Source: 'src/time.rs', lines 28:4-28:9
+    Visibility: public -/
+def time.Tick.Insts.CoreCloneClone.clone
+  (self : time.Tick) : Result time.Tick := do
+  ok self
+
+/-- [hourglass::reject::{impl core::clone::Clone for hourglass::reject::Migration}::clone]:
+    Source: 'src/reject.rs', lines 180:9-180:14
+    Visibility: public -/
+def reject.Migration.Insts.CoreCloneClone.clone
+  (self : reject.Migration) : Result reject.Migration := do
+  match self with
+  | reject.Migration.DroppedName => ok reject.Migration.DroppedName
+  | reject.Migration.RulesChanged => ok reject.Migration.RulesChanged
+  | reject.Migration.BandNarrowed __self_0 __self_1 =>
+    let p ← (BuiltinClone (Std.I64 × Std.I64)).clone __self_0
+    let p1 ← (BuiltinClone (Std.I64 × Std.I64)).clone __self_1
+    ok (reject.Migration.BandNarrowed p p1)
+
+/-- [hourglass::reject::{impl core::clone::Clone for hourglass::reject::Contradiction}::clone]:
+    Source: 'src/reject.rs', lines 88:9-88:14
+    Visibility: public -/
+def reject.Contradiction.Insts.CoreCloneClone.clone
+  (self : reject.Contradiction) : Result reject.Contradiction := do
+  match self with
+  | reject.Contradiction.UnknownEntity __self_0 =>
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
+    ok (reject.Contradiction.UnknownEntity ei)
+  | reject.Contradiction.Gone __self_0 =>
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
+    ok (reject.Contradiction.Gone ei)
+  | reject.Contradiction.SelfReference __self_0 =>
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
+    ok (reject.Contradiction.SelfReference ei)
+  | reject.Contradiction.Cycle __self_0 __self_1 =>
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
+    let ei1 ← time.EntityId.Insts.CoreCloneClone.clone __self_1
+    ok (reject.Contradiction.Cycle ei ei1)
+  | reject.Contradiction.TooManyHolders __self_0 __self_1 __self_2 __self_3 =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_1
+    let v ←
+      alloc.vec.CloneVec.clone time.EntityId.Insts.CoreCloneClone __self_2
+    let i ← lift (core.clone.impls.CloneU16.clone __self_3)
+    ok (reject.Contradiction.TooManyHolders s ei v i)
+  | reject.Contradiction.TooManyTargets __self_0 __self_1 __self_2 __self_3 =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_1
+    let v ←
+      alloc.vec.CloneVec.clone time.EntityId.Insts.CoreCloneClone __self_2
+    let i ← lift (core.clone.impls.CloneU16.clone __self_3)
+    ok (reject.Contradiction.TooManyTargets s ei v i)
+  | reject.Contradiction.IdInUse __self_0 =>
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
+    ok (reject.Contradiction.IdInUse ei)
+  | reject.Contradiction.NoSuchFact __self_0 __self_1 __self_2 =>
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_1
+    let o ←
+      core.option.Option.Insts.CoreCloneClone.clone
+        time.EntityId.Insts.CoreCloneClone __self_2
+    ok (reject.Contradiction.NoSuchFact ei s o)
+  | reject.Contradiction.Stale __self_0 __self_1 __self_2 __self_3 =>
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_1
+    let i ← lift (core.clone.impls.CloneI64.clone __self_2)
+    let i1 ← lift (core.clone.impls.CloneI64.clone __self_3)
+    ok (reject.Contradiction.Stale ei s i i1)
+  | reject.Contradiction.Backward __self_0 __self_1 __self_2 __self_3 __self_4
+    =>
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_1
+    let d ← fact.Direction.Insts.CoreCloneClone.clone __self_2
+    let o ←
+      core.option.Option.Insts.CoreCloneClone.clone core.clone.CloneI64
+        __self_3
+    let o1 ←
+      core.option.Option.Insts.CoreCloneClone.clone core.clone.CloneI64
+        __self_4
+    ok (reject.Contradiction.Backward ei s d o o1)
+  | reject.Contradiction.TimeMovedBack __self_0 __self_1 =>
+    let t ← time.Tick.Insts.CoreCloneClone.clone __self_0
+    let t1 ← time.Tick.Insts.CoreCloneClone.clone __self_1
+    ok (reject.Contradiction.TimeMovedBack t t1)
+  | reject.Contradiction.NoMigrationPath __self_0 __self_1 =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
+    let m ← reject.Migration.Insts.CoreCloneClone.clone __self_1
+    ok (reject.Contradiction.NoMigrationPath s m)
+  | reject.Contradiction.VersionStep __self_0 __self_1 __self_2 =>
+    let i ← lift (core.clone.impls.CloneU32.clone __self_0)
+    let i1 ← lift (core.clone.impls.CloneU32.clone __self_1)
+    let b ← lift (core.clone.impls.CloneBool.clone __self_2)
+    ok (reject.Contradiction.VersionStep i i1 b)
+
+/-- [hourglass::reject::{impl core::clone::Clone for hourglass::reject::Unmergeable}::clone]:
+    Source: 'src/reject.rs', lines 164:9-164:14
+    Visibility: public -/
+def reject.Unmergeable.Insts.CoreCloneClone.clone
+  (self : reject.Unmergeable) : Result reject.Unmergeable := do
+  ok self
+
+/-- [hourglass::reject::{impl core::clone::Clone for hourglass::reject::Malformed}::clone]:
+    Source: 'src/reject.rs', lines 44:9-44:14
+    Visibility: public -/
+def reject.Malformed.Insts.CoreCloneClone.clone
+  (self : reject.Malformed) : Result reject.Malformed := do
+  match self with
+  | reject.Malformed.UnknownFact __self_0 =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
+    ok (reject.Malformed.UnknownFact s)
+  | reject.Malformed.NeedsNumber __self_0 =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
+    ok (reject.Malformed.NeedsNumber s)
+  | reject.Malformed.TakesNoNumber __self_0 =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
+    ok (reject.Malformed.TakesNoNumber s)
+  | reject.Malformed.NeedsTarget __self_0 =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
+    ok (reject.Malformed.NeedsTarget s)
+  | reject.Malformed.TakesNoTarget __self_0 =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
+    ok (reject.Malformed.TakesNoTarget s)
+  | reject.Malformed.TypeNotAllowed __self_0 __self_1 __self_2 =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
+    let et ← entity.EntityType.Insts.CoreCloneClone.clone __self_1
+    let et1 ← entity.EntityType.Insts.CoreCloneClone.clone __self_2
+    ok (reject.Malformed.TypeNotAllowed s et et1)
+  | reject.Malformed.OutOfBand __self_0 __self_1 __self_2 __self_3 =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
+    let i ← lift (core.clone.impls.CloneI64.clone __self_1)
+    let i1 ← lift (core.clone.impls.CloneI64.clone __self_2)
+    let i2 ← lift (core.clone.impls.CloneI64.clone __self_3)
+    ok (reject.Malformed.OutOfBand s i i1 i2)
+  | reject.Malformed.Backward __self_0 __self_1 __self_2 __self_3 =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
+    let d ← fact.Direction.Insts.CoreCloneClone.clone __self_1
+    let o ←
+      core.option.Option.Insts.CoreCloneClone.clone core.clone.CloneI64
+        __self_2
+    let o1 ←
+      core.option.Option.Insts.CoreCloneClone.clone core.clone.CloneI64
+        __self_3
+    ok (reject.Malformed.Backward s d o o1)
+  | reject.Malformed.UnnamedEntity __self_0 =>
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
+    ok (reject.Malformed.UnnamedEntity ei)
+  | reject.Malformed.Unmergeable __self_0 __self_1 =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
+    let u ← reject.Unmergeable.Insts.CoreCloneClone.clone __self_1
+    ok (reject.Malformed.Unmergeable s u)
+  | reject.Malformed.BrokenVocabulary __self_0 __self_1 =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_0
+    let s1 ← alloc.string.String.Insts.CoreCloneClone.clone __self_1
+    ok (reject.Malformed.BrokenVocabulary s s1)
+
+/-- [hourglass::reject::{impl core::clone::Clone for hourglass::reject::Rejection}::clone]:
+    Source: 'src/reject.rs', lines 30:9-30:14
+    Visibility: public -/
+def reject.Rejection.Insts.CoreCloneClone.clone
+  (self : reject.Rejection) : Result reject.Rejection := do
+  match self with
+  | reject.Rejection.Malformed __self_0 =>
+    let m ← reject.Malformed.Insts.CoreCloneClone.clone __self_0
+    ok (reject.Rejection.Malformed m)
+  | reject.Rejection.Contradiction __self_0 =>
+    let c ← reject.Contradiction.Insts.CoreCloneClone.clone __self_0
+    ok (reject.Rejection.Contradiction c)
+
 /-- [hourglass::time::{impl core::cmp::PartialEq<hourglass::time::EntityId> for hourglass::time::EntityId}::eq]:
     Source: 'src/time.rs', lines 13:24-13:33
     Visibility: public -/
@@ -652,6 +840,7 @@ def time.EntityId.Insts.CoreCmpPartialEqEntityId.eq
 def time.EntityId.Insts.CoreCmpPartialEqEntityId : core.cmp.PartialEq
   time.EntityId time.EntityId := {
   eq := time.EntityId.Insts.CoreCmpPartialEqEntityId.eq
+  ne := time.EntityId.Insts.CoreCmpPartialEqEntityId.ne
 }
 
 /-- [hourglass::time::{hourglass::time::TimeSpan}::open]:
@@ -680,12 +869,6 @@ def time.TimeSpan.holds_at
     | none => ok true
     | some «end» => time.Tick.Insts.CoreCmpPartialOrdTick.lt «at» «end»
 
-/-- [hourglass::time::{hourglass::time::TimeSpan}::ended]:
-    Source: 'src/time.rs', lines 77:4-79:5
-    Visibility: public -/
-def time.TimeSpan.ended (self : time.TimeSpan) : Result Bool := do
-  ok (core.option.Option.is_some self.until)
-
 /-- [hourglass::time::{hourglass::time::TimeSpan}::sound]:
     Source: 'src/time.rs', lines 83:4-88:5
     Visibility: public -/
@@ -693,6 +876,381 @@ def time.TimeSpan.sound (self : time.TimeSpan) : Result Bool := do
   match self.until with
   | none => ok true
   | some «end» => time.Tick.Insts.CoreCmpPartialOrdTick.ge «end» self.from
+
+/-- [hourglass::world::{hourglass::world::World}::entity]:
+    Source: 'src/world.rs', lines 77:4-79:5
+    Visibility: public -/
+def world.World.entity
+  (self : world.World) (id : time.EntityId) :
+  Result (Option entity.Entity)
+  := do
+  ids.Ids.get self.entities id
+
+/-- [hourglass::validate::target_fits]:
+    Source: 'src/validate.rs', lines 332:0-347:1 -/
+def validate.target_fits
+  («name» : String) (rules : fact.FactRules)
+  (linked_to : Option time.EntityId) (out : alloc.vec.Vec reject.Rejection) :
+  Result (alloc.vec.Vec reject.Rejection)
+  := do
+  let b ← fact.FactRules.takes_target rules
+  if b
+  then
+    match linked_to with
+    | none =>
+      let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+      alloc.vec.Vec.push out (reject.Rejection.Malformed
+        (reject.Malformed.NeedsTarget s))
+    | some _ => ok out
+  else
+    match linked_to with
+    | none => ok out
+    | some _ =>
+      let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+      alloc.vec.Vec.push out (reject.Rejection.Malformed
+        (reject.Malformed.TakesNoTarget s))
+
+/-- [hourglass::validate::end]:
+    Source: 'src/validate.rs', lines 239:0-274:1 -/
+def validate.end
+  (w : world.World) (who : time.EntityId) («name» : String)
+  (linked_to : Option time.EntityId) (out : alloc.vec.Vec reject.Rejection) :
+  Result (alloc.vec.Vec reject.Rejection)
+  := do
+  let o ← world.World.entity w who
+  let b := core.option.Option.is_none o
+  let out1 ←
+    if b
+    then
+      alloc.vec.Vec.push out (reject.Rejection.Contradiction
+        (reject.Contradiction.UnknownEntity who))
+    else ok out
+  let o1 ← fact.FactVocabulary.rules_key w.vocabulary «name»
+  match o1 with
+  | none =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+    alloc.vec.Vec.push out1 (reject.Rejection.Malformed
+      (reject.Malformed.UnknownFact s))
+  | some rules =>
+    let s ← fact.FactRules.shape rules
+    let direction ← fact.Shape.direction s
+    let b1 ← fact.Direction.can_end direction
+    let out2 ←
+      if b1
+      then ok out1
+      else
+        do
+        let s1 ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+        alloc.vec.Vec.push out1 (reject.Rejection.Malformed
+          (reject.Malformed.Backward s1 direction none none))
+    let out3 ← validate.target_fits «name» rules linked_to out2
+    let o2 ← world.World.entity w who
+    let b2 := core.option.Option.is_some o2
+    if b2
+    then
+      let o3 ← validate.queries.slot_value w who «name» linked_to
+      let b3 := core.option.Option.is_none o3
+      if b3
+      then
+        let s1 ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+        alloc.vec.Vec.push out3 (reject.Rejection.Contradiction
+          (reject.Contradiction.NoSuchFact who s1 linked_to))
+      else ok out3
+    else ok out3
+
+/-- [hourglass::validate::live_holder]:
+    Source: 'src/validate.rs', lines 281:0-297:1 -/
+def validate.live_holder
+  (w : world.World) (who : time.EntityId)
+  (out : alloc.vec.Vec reject.Rejection) :
+  Result (Bool × (alloc.vec.Vec reject.Rejection))
+  := do
+  let o ← world.World.entity w who
+  match o with
+  | none =>
+    let out1 ←
+      alloc.vec.Vec.push out (reject.Rejection.Contradiction
+        (reject.Contradiction.UnknownEntity who))
+    ok (false, out1)
+  | some row =>
+    let b ← entity.Entity.gone row
+    if b
+    then
+      let out1 ←
+        alloc.vec.Vec.push out (reject.Rejection.Contradiction
+          (reject.Contradiction.Gone who))
+      ok (false, out1)
+    else ok (true, out)
+
+/-- [hourglass::validate::update]:
+    Source: 'src/validate.rs', lines 167:0-232:1 -/
+def validate.update
+  (w : world.World) (who : time.EntityId) («name» : String)
+  (linked_to : Option time.EntityId) («from» : Std.I64) («to» : Std.I64)
+  (out : alloc.vec.Vec reject.Rejection) :
+  Result (alloc.vec.Vec reject.Rejection)
+  := do
+  let (holder, out1) ← validate.live_holder w who out
+  let o ← fact.FactVocabulary.rules_key w.vocabulary «name»
+  match o with
+  | none =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+    alloc.vec.Vec.push out1 (reject.Rejection.Malformed
+      (reject.Malformed.UnknownFact s))
+  | some rules =>
+    let shape ← fact.FactRules.shape rules
+    let out2 ←
+      match shape with
+      | fact.Shape.Flag _ =>
+        do
+        let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+        alloc.vec.Vec.push out1 (reject.Rejection.Malformed
+          (reject.Malformed.TakesNoNumber s))
+      | fact.Shape.Number band direction =>
+        do
+        let b ← fact.Band.holds band «to»
+        let out3 ←
+          if b
+          then ok out1
+          else
+            do
+            let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+            alloc.vec.Vec.push out1 (reject.Rejection.Malformed
+              (reject.Malformed.OutOfBand s «to» band.min band.max))
+        let b1 ← fact.Direction.allows direction «from» «to»
+        if b1
+        then ok out3
+        else
+          let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+          alloc.vec.Vec.push out3 (reject.Rejection.Malformed
+            (reject.Malformed.Backward s direction (some «from») (some
+            «to»)))
+    let out3 ← validate.target_fits «name» rules linked_to out2
+    if holder
+    then
+      let o1 ← validate.queries.slot_value w who «name» linked_to
+      match o1 with
+      | none =>
+        let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+        alloc.vec.Vec.push out3 (reject.Rejection.Contradiction
+          (reject.Contradiction.NoSuchFact who s linked_to))
+      | some held_value =>
+        let got ← lift (core.option.Option.unwrap_or held_value «from»)
+        let b ←
+          core.option.Option.Insts.CoreCmpPartialEqOption.ne
+            core.cmp.PartialEqI64 held_value (some «from»)
+        if b
+        then
+          let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+          alloc.vec.Vec.push out3 (reject.Rejection.Contradiction
+            (reject.Contradiction.Stale who s «from» got))
+        else ok out3
+    else ok out3
+
+/-- [hourglass::validate::number_fits]:
+    Source: 'src/validate.rs', lines 309:0-329:1 -/
+def validate.number_fits
+  («name» : String) (shape : fact.Shape) (value : Option Std.I64)
+  (out : alloc.vec.Vec reject.Rejection) :
+  Result (alloc.vec.Vec reject.Rejection)
+  := do
+  match shape with
+  | fact.Shape.Flag _ =>
+    match value with
+    | none => ok out
+    | some _ =>
+      let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+      alloc.vec.Vec.push out (reject.Rejection.Malformed
+        (reject.Malformed.TakesNoNumber s))
+  | fact.Shape.Number band _ =>
+    match value with
+    | none =>
+      let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+      alloc.vec.Vec.push out (reject.Rejection.Malformed
+        (reject.Malformed.NeedsNumber s))
+    | some n =>
+      let b ← fact.Band.holds band n
+      if b
+      then ok out
+      else
+        let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+        alloc.vec.Vec.push out (reject.Rejection.Malformed
+          (reject.Malformed.OutOfBand s n band.min band.max))
+
+/-- [hourglass::validate::push_all]: loop 0:
+    Source: 'src/validate.rs', lines 302:4-305:5 -/
+@[rust_loop]
+def validate.push_all_loop
+  (out : alloc.vec.Vec reject.Rejection) (faults : Slice reject.Rejection)
+  (i : Std.Usize) :
+  Result (alloc.vec.Vec reject.Rejection)
+  := do
+  let i1 := Slice.len faults
+  if i < i1
+  then
+    let r ← Slice.index_usize faults i
+    let r1 ← reject.Rejection.Insts.CoreCloneClone.clone r
+    let out1 ← alloc.vec.Vec.push out r1
+    let i2 ← i + 1#usize
+    validate.push_all_loop out1 faults i2
+  else ok out
+partial_fixpoint
+
+/-- [hourglass::validate::push_all]:
+    Source: 'src/validate.rs', lines 300:0-306:1 -/
+@[reducible]
+def validate.push_all
+  (out : alloc.vec.Vec reject.Rejection) (faults : Slice reject.Rejection) :
+  Result (alloc.vec.Vec reject.Rejection)
+  := do
+  validate.push_all_loop out faults 0#usize
+
+/-- [hourglass::validate::start]:
+    Source: 'src/validate.rs', lines 83:0-160:1 -/
+def validate.start
+  (w : world.World) (who : time.EntityId) («name» : String)
+  (value : Option Std.I64) (linked_to : Option time.EntityId)
+  (out : alloc.vec.Vec reject.Rejection) :
+  Result (alloc.vec.Vec reject.Rejection)
+  := do
+  let (holder, out1) ← validate.live_holder w who out
+  let o ← fact.FactVocabulary.rules_key w.vocabulary «name»
+  match o with
+  | none =>
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+    alloc.vec.Vec.push out1 (reject.Rejection.Malformed
+      (reject.Malformed.UnknownFact s))
+  | some rules =>
+    let shape ← fact.FactRules.shape rules
+    let out2 ← validate.number_fits «name» shape value out1
+    let out3 ← validate.target_fits «name» rules linked_to out2
+    let out4 ←
+      match linked_to with
+      | none => ok out3
+      | some target =>
+        do
+        let b ← time.EntityId.Insts.CoreCmpPartialEqEntityId.eq target who
+        let out5 ←
+          if b
+          then
+            alloc.vec.Vec.push out3 (reject.Rejection.Contradiction
+              (reject.Contradiction.SelfReference who))
+          else
+            do
+            let o1 ← world.World.entity w target
+            let b1 := core.option.Option.is_none o1
+            if b1
+            then
+              alloc.vec.Vec.push out3 (reject.Rejection.Contradiction
+                (reject.Contradiction.UnknownEntity target))
+            else ok out3
+        let b1 ← fact.FactRules.takes_target rules
+        let out6 ←
+          if b1
+          then
+            do
+            let v ← validate.queries.type_faults w who «name» rules target
+            let s := alloc.vec.Vec.deref v
+            let out7 ← validate.push_all out5 s
+            let v1 ←
+              validate.queries.count_faults w who «name» rules target
+            let s1 := alloc.vec.Vec.deref v1
+            validate.push_all out7 s1
+          else ok out5
+        let b2 ← validate.queries.is_located_in «name»
+        if b2
+        then
+          let o1 ← validate.queries.cycle_through w who target
+          match o1 with
+          | none => ok out6
+          | some through =>
+            alloc.vec.Vec.push out6 (reject.Rejection.Contradiction
+              (reject.Contradiction.Cycle who through))
+        else ok out6
+    if holder
+    then
+      let held ← validate.queries.held_for_start w who «name» linked_to
+      let direction ← fact.Shape.direction shape
+      match held with
+      | none =>
+        let b ← fact.Direction.can_restart direction
+        if b
+        then ok out4
+        else
+          let b1 ← validate.queries.ended_before w who «name»
+          if b1
+          then
+            let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+            alloc.vec.Vec.push out4 (reject.Rejection.Contradiction
+              (reject.Contradiction.Backward who s direction none value))
+          else ok out4
+      | some held_value =>
+        match held_value with
+        | none => ok out4
+        | some was =>
+          match value with
+          | none => ok out4
+          | some now =>
+            let b ← fact.Direction.allows direction was now
+            if b
+            then ok out4
+            else
+              let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+              alloc.vec.Vec.push out4 (reject.Rejection.Contradiction
+                (reject.Contradiction.Backward who s direction held_value
+                value))
+    else ok out4
+
+/-- [hourglass::validate::validate]:
+    Source: 'src/validate.rs', lines 29:0-76:1
+    Visibility: public -/
+def validate.validate
+  (w : world.World) (tick : time.Tick) (kind : event.EventKind) :
+  Result (alloc.vec.Vec reject.Rejection)
+  := do
+  let b ← time.Tick.Insts.CoreCmpPartialOrdTick.lt tick w.tick
+  let out ←
+    if b
+    then
+      alloc.vec.Vec.push (alloc.vec.Vec.new reject.Rejection)
+        (reject.Rejection.Contradiction (reject.Contradiction.TimeMovedBack
+        w.tick tick))
+    else ok (alloc.vec.Vec.new reject.Rejection)
+  match kind with
+  | event.EventKind.EntityCreated id _ «name» =>
+    let b1 ← validate.queries.blank «name»
+    let out1 ←
+      if b1
+      then
+        alloc.vec.Vec.push out (reject.Rejection.Malformed
+          (reject.Malformed.UnnamedEntity id))
+      else ok out
+    let o ← world.World.entity w id
+    let b2 := core.option.Option.is_some o
+    if b2
+    then
+      alloc.vec.Vec.push out1 (reject.Rejection.Contradiction
+        (reject.Contradiction.IdInUse id))
+    else ok out1
+  | event.EventKind.EntityDestroyed id =>
+    let o ← world.World.entity w id
+    match o with
+    | none =>
+      alloc.vec.Vec.push out (reject.Rejection.Contradiction
+        (reject.Contradiction.UnknownEntity id))
+    | some row =>
+      let b1 ← entity.Entity.gone row
+      if b1
+      then
+        alloc.vec.Vec.push out (reject.Rejection.Contradiction
+          (reject.Contradiction.Gone id))
+      else ok out
+  | event.EventKind.FactStart who «name» value linked_to =>
+    validate.start w who «name» value linked_to out
+  | event.EventKind.FactUpdate who «name» linked_to «from» «to» =>
+    validate.update w who «name» linked_to «from» «to» out
+  | event.EventKind.FactEnd who «name» linked_to =>
+    validate.end w who «name» linked_to out
 
 /-- [hourglass::world::{hourglass::world::World}::new]:
     Source: 'src/world.rs', lines 68:4-75:5

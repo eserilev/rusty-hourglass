@@ -35,8 +35,9 @@ args+=(
   --opaque 'hourglass::names'
   # The entity map is a model too (Hourglass/TypesExternal.lean).
   --opaque 'hourglass::ids'
-  # The laws hold for every `validate`, so Aeneas sees only its type.
-  --opaque 'hourglass::validate::validate'
+  # The world queries of the gate. The laws about `validate` hold for
+  # every answer they give, so Aeneas sees only their types.
+  --opaque 'hourglass::validate::queries'
 )
 
 (cd "$crate" && RUSTFLAGS="--cfg charon" "$AENEAS/charon/bin/charon" cargo "${args[@]}" --dest-file "$work/hourglass.llbc")

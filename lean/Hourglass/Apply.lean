@@ -121,18 +121,21 @@ decreasing_by all_goals (simp_all; scalar_tac)
   step*
   simp_all
 
-/-- The slot search answers a place inside the list, or nothing. -/
+/-- The slot search answers a place inside the list, where the fact
+    sits in the slot, or nothing. -/
 @[step] theorem slot_index_loop_spec (facts : Slice Fact) (n : String)
     (l : Option time.EntityId) (i : Usize) :
     world.slot_index_loop facts n l i
-      ⦃ o => ∀ j, o = some j → j.val < facts.length ⦄ := by
+      ⦃ o => ∀ j, o = some j → ∃ hj : j.val < facts.length,
+        inSlot (facts.val[j.val]'(by simpa using hj)) n l = true ⦄ := by
   unfold world.slot_index_loop
   step*
 termination_by facts.length - i.val
 decreasing_by scalar_tac
 
 @[step] theorem slot_index_spec (facts : Slice Fact) (n : String) (l : Option time.EntityId) :
-    world.slot_index facts n l ⦃ o => ∀ j, o = some j → j.val < facts.length ⦄ := by
+    world.slot_index facts n l ⦃ o => ∀ j, o = some j → ∃ hj : j.val < facts.length,
+      inSlot (facts.val[j.val]'(by simpa using hj)) n l = true ⦄ := by
   unfold world.slot_index
   step*
 
@@ -312,7 +315,7 @@ theorem apply_one_fact_per_slot (m : ids.Ids Entity) (v : FactVocabulary) (ev : 
         simp only [ok.injEq] at ho1'
         subst ho1'
         have hi : i.val < row.facts.val.length := by
-          simpa [alloc.vec.Vec.deref] using hlt i rfl
+          simpa [alloc.vec.Vec.deref] using (hlt i rfl).1
         simp only [alloc.vec.Vec.index_mut_usize, alloc.vec.Vec.index_usize] at hvf
         simp [hi] at hvf
         subst hvf
@@ -579,7 +582,7 @@ theorem apply_one_target (m : ids.Ids Entity) (v : FactVocabulary) (ev : Event)
           simp only [ok.injEq] at ho1'
           subst ho1'
           have hi : i.val < row.facts.val.length := by
-            simpa [alloc.vec.Vec.deref] using hlt i rfl
+            simpa [alloc.vec.Vec.deref] using (hlt i rfl).1
           simp only [alloc.vec.Vec.index_mut_usize, alloc.vec.Vec.index_usize] at hvf
           simp [hi] at hvf
           subst hvf

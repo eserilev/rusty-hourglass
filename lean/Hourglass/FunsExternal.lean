@@ -192,17 +192,75 @@ def ids.Ids.take {V : Type} (m : ids.Ids V) (id : time.EntityId) :
     Result (Option V × ids.Ids V) :=
   ok (m[id.val]?, Std.ExtTreeMap.erase m id.val)
 
-/-! ## One crate function, opaque on purpose
+/-- `Option != Option` is the negation of `==`. -/
+@[rust_fun
+  "core::option::{core::cmp::PartialEq<core::option::Option<@T>, core::option::Option<@T>>}::ne"]
+def core.option.Option.Insts.CoreCmpPartialEqOption.ne
+  {T : Type} (cmpPartialEqInst : core.cmp.PartialEq T T) (a b : Option T) : Result Bool := do
+  let e ← core.option.Option.Insts.CoreCmpPartialEqOption.eq cmpPartialEqInst a b
+  ok (!e)
 
-The laws hold for every `validate` (World.lean). So it stays an
-axiom: a function with no body. The axiom only names a function of an
-inhabited type, so it cannot make the logic inconsistent. Trust.lean
-pins exactly which laws use it. -/
+/-- `EntityId != EntityId`, by the derive: `!=` on the u32. -/
+def time.EntityId.Insts.CoreCmpPartialEqEntityId.ne (a b : time.EntityId) : Result Bool :=
+  ok (decide (a ≠ b))
 
-/-- [hourglass::validate::validate]:
-    Source: 'src/validate.rs', lines 24:0-71:1
-    Visibility: public -/
-axiom validate.validate
+/-- `Ids::get` is the value of the id, if the map holds it. -/
+def ids.Ids.get {V : Type} (m : ids.Ids V) (id : time.EntityId) : Result (Option V) :=
+  ok m[id.val]?
+
+/-! ## The world queries of the gate, opaque on purpose
+
+`validate` translates in full, except these queries (the module
+`validate::queries`). Each one only reads the world and answers a
+value, and none of them touches the list of faults. So a law about
+`validate` holds for every answer they give. Each axiom only names a
+function of an inhabited type, so it cannot make the logic
+inconsistent. Trust.lean pins exactly which laws use them. -/
+
+/-- [hourglass::validate::queries::blank]:
+    Source: 'src/validate.rs', lines 362:4-364:5 -/
+axiom validate.queries.blank : String → Result Bool
+
+/-- [hourglass::validate::queries::is_located_in]:
+    Source: 'src/validate.rs', lines 367:4-369:5 -/
+axiom validate.queries.is_located_in : String → Result Bool
+
+/-- [hourglass::validate::queries::cycle_through]:
+    Source: 'src/validate.rs', lines 371:4-373:5 -/
+axiom validate.queries.cycle_through
   :
-  world.World → time.Tick → event.EventKind → Result (alloc.vec.Vec
-    reject.Rejection)
+  world.World → time.EntityId → time.EntityId → Result (Option
+    time.EntityId)
+
+/-- [hourglass::validate::queries::type_faults]:
+    Source: 'src/validate.rs', lines 376:4-386:5 -/
+axiom validate.queries.type_faults
+  :
+  world.World → time.EntityId → String → fact.FactRules → time.EntityId
+    → Result (alloc.vec.Vec reject.Rejection)
+
+/-- [hourglass::validate::queries::count_faults]:
+    Source: 'src/validate.rs', lines 389:4-399:5 -/
+axiom validate.queries.count_faults
+  :
+  world.World → time.EntityId → String → fact.FactRules → time.EntityId
+    → Result (alloc.vec.Vec reject.Rejection)
+
+/-- [hourglass::validate::queries::held_for_start]:
+    Source: 'src/validate.rs', lines 405:4-418:5 -/
+axiom validate.queries.held_for_start
+  :
+  world.World → time.EntityId → String → Option time.EntityId → Result
+    (Option (Option Std.I64))
+
+/-- [hourglass::validate::queries::slot_value]:
+    Source: 'src/validate.rs', lines 423:4-432:5 -/
+axiom validate.queries.slot_value
+  :
+  world.World → time.EntityId → String → Option time.EntityId → Result
+    (Option (Option Std.I64))
+
+/-- [hourglass::validate::queries::ended_before]:
+    Source: 'src/validate.rs', lines 435:4-437:5 -/
+axiom validate.queries.ended_before
+  : world.World → time.EntityId → String → Result Bool

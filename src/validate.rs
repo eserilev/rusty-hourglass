@@ -21,51 +21,56 @@ use crate::world::World;
 
 /// Every reason this event cannot land. An empty answer means it
 /// can.
-pub fn validate(world: &World, tick: Tick, kind: &EventKind) -> Vec<Rejection> {
+///
+/// A local never takes the name of a module (`entity`, `world`):
+/// Aeneas writes the same name for both, and the Lean breaks. So the
+/// world is `w` and the entity is `who`.
+#[cfg_attr(charon, verify::start_from)]
+pub fn validate(w: &World, tick: Tick, kind: &EventKind) -> Vec<Rejection> {
     let mut out = Vec::new();
-    if tick < world.tick {
+    if tick < w.tick {
         out.push(Rejection::Contradiction(Contradiction::TimeMovedBack {
-            was: world.tick,
+            was: w.tick,
             got: tick,
         }));
     }
     match kind {
         EventKind::EntityCreated { id, name, .. } => {
-            if name.trim().is_empty() {
+            if queries::blank(name) {
                 out.push(Rejection::Malformed(Malformed::UnnamedEntity { id: *id }));
             }
-            if world.entity(*id).is_some() {
+            if w.entity(*id).is_some() {
                 out.push(Rejection::Contradiction(Contradiction::IdInUse { id: *id }));
             }
         }
-        EventKind::EntityDestroyed { id } => match world.entity(*id) {
+        EventKind::EntityDestroyed { id } => match w.entity(*id) {
             None => out.push(Rejection::Contradiction(Contradiction::UnknownEntity {
                 id: *id,
             })),
-            Some(entity) => {
-                if entity.gone() {
+            Some(row) => {
+                if row.gone() {
                     out.push(Rejection::Contradiction(Contradiction::Gone { id: *id }));
                 }
             }
         },
         EventKind::FactStart {
-            entity,
+            entity: who,
             name,
             value,
             linked_to,
-        } => start(world, *entity, name, *value, *linked_to, &mut out),
+        } => start(w, *who, name, *value, *linked_to, &mut out),
         EventKind::FactUpdate {
-            entity,
+            entity: who,
             name,
             linked_to,
             from,
             to,
-        } => update(world, *entity, name, *linked_to, *from, *to, &mut out),
+        } => update(w, *who, name, *linked_to, *from, *to, &mut out),
         EventKind::FactEnd {
-            entity,
+            entity: who,
             name,
             linked_to,
-        } => end(world, *entity, name, *linked_to, &mut out),
+        } => end(w, *who, name, *linked_to, &mut out),
     }
     out
 }
@@ -74,19 +79,18 @@ pub fn validate(world: &World, tick: Tick, kind: &EventKind) -> Vec<Rejection> {
 // FactStart
 // ---------------------------------------------------------------
 
+#[allow(clippy::ptr_arg)]
 fn start(
-    world: &World,
-    entity: EntityId,
-    name: &str,
+    w: &World,
+    who: EntityId,
+    name: &String,
     value: Option<i64>,
     linked_to: Option<EntityId>,
     out: &mut Vec<Rejection>,
 ) {
-    let holder = live_holder(world, entity, out);
-    let Some(rules) = world.vocabulary.rules(name) else {
-        out.push(Rejection::Malformed(Malformed::UnknownFact {
-            name: name.to_string(),
-        }));
+    let holder = live_holder(w, who, out);
+    let Some(rules) = w.vocabulary.rules_key(name) else {
+        out.push(Rejection::Malformed(Malformed::UnknownFact { name: name.clone() }));
         return;
     };
     let shape = rules.shape();
@@ -94,11 +98,11 @@ fn start(
     target_fits(name, rules, linked_to, out);
 
     if let Some(target) = linked_to {
-        if target == entity {
+        if target == who {
             out.push(Rejection::Contradiction(Contradiction::SelfReference {
-                id: entity,
+                id: who,
             }));
-        } else if world.entity(target).is_none() {
+        } else if w.entity(target).is_none() {
             out.push(Rejection::Contradiction(Contradiction::UnknownEntity {
                 id: target,
             }));
@@ -107,13 +111,13 @@ fn start(
         // person, and the history names the dead (spec decision
         // 9). Only the HOLDER must be alive.
         if rules.takes_target() {
-            types_fit(world, entity, name, rules, target, out);
-            counts_fit(world, entity, name, rules, target, out);
+            push_all(out, &queries::type_faults(w, who, name, rules, target));
+            push_all(out, &queries::count_faults(w, who, name, rules, target));
         }
-        if name == LOCATED_IN {
-            if let Some(through) = world.would_cycle(entity, target) {
+        if queries::is_located_in(name) {
+            if let Some(through) = queries::cycle_through(w, who, target) {
                 out.push(Rejection::Contradiction(Contradiction::Cycle {
-                    entity,
+                    entity: who,
                     through,
                 }));
             }
@@ -125,20 +129,15 @@ fn start(
     }
     // The direction, against what the world holds now. A best
     // depth that starts again at zero is the case this catches.
-    let held = match world.target_count(name) {
-        Some(count) if count.is_single() => world
-            .entity(entity)
-            .and_then(|e| e.facts_named(name).next()),
-        _ => world.entity(entity).and_then(|e| e.fact(name, linked_to)),
-    };
+    let held = queries::held_for_start(w, who, name, linked_to);
     let direction = shape.direction();
     match held {
-        Some(fact) => {
-            if let (Some(was), Some(now)) = (fact.value, value) {
+        Some(held_value) => {
+            if let (Some(was), Some(now)) = (held_value, value) {
                 if !direction.allows(was, now) {
                     out.push(Rejection::Contradiction(Contradiction::Backward {
-                        entity,
-                        name: name.to_string(),
+                        entity: who,
+                        name: name.clone(),
                         direction,
                         held: Some(was),
                         proposed: Some(now),
@@ -147,10 +146,10 @@ fn start(
             }
         }
         None => {
-            if !direction.can_restart() && world.ever_ended(entity, name) {
+            if !direction.can_restart() && queries::ended_before(w, who, name) {
                 out.push(Rejection::Contradiction(Contradiction::Backward {
-                    entity,
-                    name: name.to_string(),
+                    entity: who,
+                    name: name.clone(),
                     direction,
                     held: None,
                     proposed: value,
@@ -164,21 +163,19 @@ fn start(
 // FactUpdate
 // ---------------------------------------------------------------
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::ptr_arg)]
 fn update(
-    world: &World,
-    entity: EntityId,
-    name: &str,
+    w: &World,
+    who: EntityId,
+    name: &String,
     linked_to: Option<EntityId>,
     from: i64,
     to: i64,
     out: &mut Vec<Rejection>,
 ) {
-    let holder = live_holder(world, entity, out);
-    let Some(rules) = world.vocabulary.rules(name) else {
-        out.push(Rejection::Malformed(Malformed::UnknownFact {
-            name: name.to_string(),
-        }));
+    let holder = live_holder(w, who, out);
+    let Some(rules) = w.vocabulary.rules_key(name) else {
+        out.push(Rejection::Malformed(Malformed::UnknownFact { name: name.clone() }));
         return;
     };
     let shape = rules.shape();
@@ -187,12 +184,12 @@ fn update(
     // name (spec decision 33 and a half).
     match shape {
         Shape::Flag { .. } => out.push(Rejection::Malformed(Malformed::TakesNoNumber {
-            name: name.to_string(),
+            name: name.clone(),
         })),
         Shape::Number { band, direction } => {
             if !band.holds(to) {
                 out.push(Rejection::Malformed(Malformed::OutOfBand {
-                    name: name.to_string(),
+                    name: name.clone(),
                     value: to,
                     min: band.min,
                     max: band.max,
@@ -200,7 +197,7 @@ fn update(
             }
             if !direction.allows(from, to) {
                 out.push(Rejection::Malformed(Malformed::Backward {
-                    name: name.to_string(),
+                    name: name.clone(),
                     direction,
                     from: Some(from),
                     to: Some(to),
@@ -212,20 +209,20 @@ fn update(
     if !holder {
         return;
     }
-    match world.entity(entity).and_then(|e| e.fact(name, linked_to)) {
+    match queries::slot_value(w, who, name, linked_to) {
         None => out.push(Rejection::Contradiction(Contradiction::NoSuchFact {
-            entity,
-            name: name.to_string(),
+            entity: who,
+            name: name.clone(),
             linked_to,
         })),
-        Some(fact) => {
+        Some(held_value) => {
             // The stale check. A director reads a briefing,
             // thinks, and proposes. The world moved meanwhile.
-            let got = fact.value.unwrap_or(from);
-            if fact.value != Some(from) {
+            let got = held_value.unwrap_or(from);
+            if held_value != Some(from) {
                 out.push(Rejection::Contradiction(Contradiction::Stale {
-                    entity,
-                    name: name.to_string(),
+                    entity: who,
+                    name: name.clone(),
                     want: from,
                     got,
                 }));
@@ -238,44 +235,41 @@ fn update(
 // FactEnd
 // ---------------------------------------------------------------
 
+#[allow(clippy::ptr_arg)]
 fn end(
-    world: &World,
-    entity: EntityId,
-    name: &str,
+    w: &World,
+    who: EntityId,
+    name: &String,
     linked_to: Option<EntityId>,
     out: &mut Vec<Rejection>,
 ) {
     // A fact ends on a dead entity. A crown does not outlive the
     // king (spec decision 9), so a gone holder passes here.
-    if world.entity(entity).is_none() {
+    if w.entity(who).is_none() {
         out.push(Rejection::Contradiction(Contradiction::UnknownEntity {
-            id: entity,
+            id: who,
         }));
     }
-    let Some(rules) = world.vocabulary.rules(name) else {
-        out.push(Rejection::Malformed(Malformed::UnknownFact {
-            name: name.to_string(),
-        }));
+    let Some(rules) = w.vocabulary.rules_key(name) else {
+        out.push(Rejection::Malformed(Malformed::UnknownFact { name: name.clone() }));
         return;
     };
     let direction = rules.shape().direction();
     if !direction.can_end() {
         out.push(Rejection::Malformed(Malformed::Backward {
-            name: name.to_string(),
+            name: name.clone(),
             direction,
             from: None,
             to: None,
         }));
     }
     target_fits(name, rules, linked_to, out);
-    if let Some(row) = world.entity(entity) {
-        if row.fact(name, linked_to).is_none() {
-            out.push(Rejection::Contradiction(Contradiction::NoSuchFact {
-                entity,
-                name: name.to_string(),
-                linked_to,
-            }));
-        }
+    if w.entity(who).is_some() && queries::slot_value(w, who, name, linked_to).is_none() {
+        out.push(Rejection::Contradiction(Contradiction::NoSuchFact {
+            entity: who,
+            name: name.clone(),
+            linked_to,
+        }));
     }
 }
 
@@ -284,17 +278,17 @@ fn end(
 // ---------------------------------------------------------------
 
 /// Is the entity here, and alive? A dead entity gains no facts.
-fn live_holder(world: &World, entity: EntityId, out: &mut Vec<Rejection>) -> bool {
-    match world.entity(entity) {
+fn live_holder(w: &World, who: EntityId, out: &mut Vec<Rejection>) -> bool {
+    match w.entity(who) {
         None => {
             out.push(Rejection::Contradiction(Contradiction::UnknownEntity {
-                id: entity,
+                id: who,
             }));
             false
         }
         Some(row) => {
             if row.gone() {
-                out.push(Rejection::Contradiction(Contradiction::Gone { id: entity }));
+                out.push(Rejection::Contradiction(Contradiction::Gone { id: who }));
                 return false;
             }
             true
@@ -302,18 +296,28 @@ fn live_holder(world: &World, entity: EntityId, out: &mut Vec<Rejection>) -> boo
     }
 }
 
-fn number_fits(name: &str, shape: Shape, value: Option<i64>, out: &mut Vec<Rejection>) {
+/// Add each fault of the list, in order.
+fn push_all(out: &mut Vec<Rejection>, faults: &[Rejection]) {
+    let mut i = 0;
+    while i < faults.len() {
+        out.push(faults[i].clone());
+        i += 1;
+    }
+}
+
+#[allow(clippy::ptr_arg)]
+fn number_fits(name: &String, shape: Shape, value: Option<i64>, out: &mut Vec<Rejection>) {
     match (shape, value) {
         (Shape::Number { .. }, None) => out.push(Rejection::Malformed(Malformed::NeedsNumber {
-            name: name.to_string(),
+            name: name.clone(),
         })),
         (Shape::Flag { .. }, Some(_)) => out.push(Rejection::Malformed(Malformed::TakesNoNumber {
-            name: name.to_string(),
+            name: name.clone(),
         })),
         (Shape::Number { band, .. }, Some(n)) => {
             if !band.holds(n) {
                 out.push(Rejection::Malformed(Malformed::OutOfBand {
-                    name: name.to_string(),
+                    name: name.clone(),
                     value: n,
                     min: band.min,
                     max: band.max,
@@ -324,20 +328,112 @@ fn number_fits(name: &str, shape: Shape, value: Option<i64>, out: &mut Vec<Rejec
     }
 }
 
+#[allow(clippy::ptr_arg)]
 fn target_fits(
-    name: &str,
+    name: &String,
     rules: &FactRules,
     linked_to: Option<EntityId>,
     out: &mut Vec<Rejection>,
 ) {
     match (rules.takes_target(), linked_to) {
         (true, None) => out.push(Rejection::Malformed(Malformed::NeedsTarget {
-            name: name.to_string(),
+            name: name.clone(),
         })),
         (false, Some(_)) => out.push(Rejection::Malformed(Malformed::TakesNoTarget {
-            name: name.to_string(),
+            name: name.clone(),
         })),
         _ => {}
+    }
+}
+
+/// The world queries of the gate. Each one only reads the world and
+/// answers a value, and none of them touches the list of faults. The
+/// Lean proofs keep this module opaque, so a law about `validate`
+/// holds for every answer these queries give.
+mod queries {
+    use super::{counts_fit, types_fit};
+    use crate::fact::{FactRules, LOCATED_IN};
+    use crate::reject::Rejection;
+    use crate::time::EntityId;
+    use crate::world::World;
+
+    /// A name with nothing in it but white space.
+    #[allow(clippy::ptr_arg)]
+    pub(super) fn blank(name: &String) -> bool {
+        name.trim().is_empty()
+    }
+
+    #[allow(clippy::ptr_arg)]
+    pub(super) fn is_located_in(name: &String) -> bool {
+        name == LOCATED_IN
+    }
+
+    pub(super) fn cycle_through(w: &World, who: EntityId, target: EntityId) -> Option<EntityId> {
+        w.would_cycle(who, target)
+    }
+
+    #[allow(clippy::ptr_arg)]
+    pub(super) fn type_faults(
+        w: &World,
+        who: EntityId,
+        name: &String,
+        rules: &FactRules,
+        target: EntityId,
+    ) -> Vec<Rejection> {
+        let mut out = Vec::new();
+        types_fit(w, who, name, rules, target, &mut out);
+        out
+    }
+
+    #[allow(clippy::ptr_arg)]
+    pub(super) fn count_faults(
+        w: &World,
+        who: EntityId,
+        name: &String,
+        rules: &FactRules,
+        target: EntityId,
+    ) -> Vec<Rejection> {
+        let mut out = Vec::new();
+        counts_fit(w, who, name, rules, target, &mut out);
+        out
+    }
+
+    /// The fact a start meets, as its value: the one fact of a
+    /// single-target name, or the fact in the slot. Nothing when no
+    /// fact is there.
+    #[allow(clippy::ptr_arg)]
+    pub(super) fn held_for_start(
+        w: &World,
+        who: EntityId,
+        name: &String,
+        linked_to: Option<EntityId>,
+    ) -> Option<Option<i64>> {
+        let held = match w.target_count(name) {
+            Some(count) if count.is_single() => {
+                w.entity(who).and_then(|e| e.facts_named(name).next())
+            }
+            _ => w.entity(who).and_then(|e| e.fact(name, linked_to)),
+        };
+        held.map(|f| f.value)
+    }
+
+    /// The value of the fact in the slot. Nothing when the entity or
+    /// the fact is not there.
+    #[allow(clippy::ptr_arg)]
+    pub(super) fn slot_value(
+        w: &World,
+        who: EntityId,
+        name: &String,
+        linked_to: Option<EntityId>,
+    ) -> Option<Option<i64>> {
+        w.entity(who)
+            .and_then(|e| e.fact(name, linked_to))
+            .map(|f| f.value)
+    }
+
+    #[allow(clippy::ptr_arg)]
+    pub(super) fn ended_before(w: &World, who: EntityId, name: &String) -> bool {
+        w.ever_ended(who, name)
     }
 }
 

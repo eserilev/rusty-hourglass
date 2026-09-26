@@ -4,6 +4,7 @@ import Hourglass.Laws
 import Hourglass.Merge
 import Hourglass.World
 import Hourglass.Apply
+import Hourglass.Gate
 
 open hourglass
 
@@ -80,8 +81,8 @@ open hourglass
 #print axioms mergeRec_fits
 
 
-/-! The rung 3 laws. The laws about `propose` hold for every `validate`,
-    so their pins name that one opaque crate function. -/
+/-! The rung 3 laws. The laws about `propose` hold for every answer of
+    the world queries of the gate, so their pins name those queries. -/
 
 /-- info: 'hourglass.replay_one_of_commit' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
@@ -95,18 +96,47 @@ open hourglass
 #guard_msgs in
 #print axioms rewind_is_exact
 
-/-- info: 'hourglass.propose_ok' depends on axioms: [propext, Classical.choice, Quot.sound, validate.validate] -/
+/-- info: 'hourglass.propose_ok' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ validate.queries.blank,
+ validate.queries.count_faults,
+ validate.queries.cycle_through,
+ validate.queries.ended_before,
+ validate.queries.held_for_start,
+ validate.queries.is_located_in,
+ validate.queries.slot_value,
+ validate.queries.type_faults] -/
 #guard_msgs in
 #print axioms propose_ok
 
-/-- info: 'hourglass.propose_err' depends on axioms: [propext, Classical.choice, Quot.sound, validate.validate] -/
+/-- info: 'hourglass.propose_err' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ validate.queries.blank,
+ validate.queries.count_faults,
+ validate.queries.cycle_through,
+ validate.queries.ended_before,
+ validate.queries.held_for_start,
+ validate.queries.is_located_in,
+ validate.queries.slot_value,
+ validate.queries.type_faults] -/
 #guard_msgs in
 #print axioms propose_err
 
-/-- info: 'hourglass.reach_propose' depends on axioms: [propext, Classical.choice, Quot.sound, validate.validate] -/
+/-- info: 'hourglass.reach_propose' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ validate.queries.blank,
+ validate.queries.count_faults,
+ validate.queries.cycle_through,
+ validate.queries.ended_before,
+ validate.queries.held_for_start,
+ validate.queries.is_located_in,
+ validate.queries.slot_value,
+ validate.queries.type_faults] -/
 #guard_msgs in
 #print axioms reach_propose
-
 
 /-! The rung 4a laws: the rules inside `apply`. -/
 
@@ -133,4 +163,69 @@ open hourglass
 /-- info: 'hourglass.every_world_one_target' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms every_world_one_target
+
+/-! The rung 4b laws: the rules inside `validate`. Each pin names the world
+    queries that the law reads, and no other axiom. -/
+
+/-- info: 'hourglass.start_clean' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ validate.queries.count_faults,
+ validate.queries.cycle_through,
+ validate.queries.ended_before,
+ validate.queries.held_for_start,
+ validate.queries.is_located_in,
+ validate.queries.type_faults] -/
+#guard_msgs in
+#print axioms start_clean
+
+/-- info: 'hourglass.update_clean' depends on axioms: [propext, Classical.choice, Quot.sound, validate.queries.slot_value] -/
+#guard_msgs in
+#print axioms update_clean
+
+/-- info: 'hourglass.validate_clean' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ validate.queries.blank,
+ validate.queries.count_faults,
+ validate.queries.cycle_through,
+ validate.queries.ended_before,
+ validate.queries.held_for_start,
+ validate.queries.is_located_in,
+ validate.queries.slot_value,
+ validate.queries.type_faults] -/
+#guard_msgs in
+#print axioms validate_clean
+
+/-- info: 'hourglass.apply_in_band' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms apply_in_band
+
+/-- info: 'hourglass.reachP_reach' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ validate.queries.blank,
+ validate.queries.count_faults,
+ validate.queries.cycle_through,
+ validate.queries.ended_before,
+ validate.queries.held_for_start,
+ validate.queries.is_located_in,
+ validate.queries.slot_value,
+ validate.queries.type_faults] -/
+#guard_msgs in
+#print axioms reachP_reach
+
+/-- info: 'hourglass.every_proposed_world_in_band' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ validate.queries.blank,
+ validate.queries.count_faults,
+ validate.queries.cycle_through,
+ validate.queries.ended_before,
+ validate.queries.held_for_start,
+ validate.queries.is_located_in,
+ validate.queries.slot_value,
+ validate.queries.type_faults] -/
+#guard_msgs in
+#print axioms every_proposed_world_in_band
 
