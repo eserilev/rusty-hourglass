@@ -11,7 +11,9 @@ set -euo pipefail
 : "${AENEAS:?set AENEAS to the root of an Aeneas checkout}"
 here="$(cd "$(dirname "$0")" && pwd)"
 crate="$(dirname "$here")"
-work="$(mktemp -d "${XDG_CACHE_HOME:-$HOME/.cache}/hourglass-extract.XXXXXX")"
+cache="${XDG_CACHE_HOME:-$HOME/.cache}"
+mkdir -p "$cache"
+work="$(mktemp -d "$cache/hourglass-extract.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 
 # The roots of the translation are the functions with the mark
