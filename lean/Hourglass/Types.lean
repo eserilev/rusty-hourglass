@@ -320,4 +320,14 @@ structure world.World where
   entities : ids.Ids entity.Entity
   history : event.EventHistory
 
+/-- [hourglass::verify::Row]
+    Source: 'src/verify.rs', lines 42:0-48:1 -/
+structure verify.Row where
+  kind : entity.EntityType
+  «name» : String
+  «from» : time.Tick
+  «until» : Option time.Tick
+  slots : alloc.vec.Vec (String × (Option Std.I64) × (Option time.EntityId)
+    × time.EventId)
+
 end hourglass

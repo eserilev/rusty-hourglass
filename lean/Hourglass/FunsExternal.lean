@@ -176,6 +176,16 @@ def core.str.Str.as_bytes (s : Str) : Result (Slice U8) :=
 def Str.Insts.CoreCmpPartialEqStr.eq (a b : Str) : Result Bool :=
   ok (decide (a = b))
 
+/-- `String != String` is the negation of `==`. -/
+@[rust_fun
+  "alloc::string::{core::cmp::PartialEq<alloc::string::String, alloc::string::String>}::ne"]
+def alloc.string.String.Insts.CoreCmpPartialEqString.ne (a b : String) : Result Bool :=
+  ok (decide (a ≠ b))
+
+/-- `Tick != Tick`, by the derive: `!=` on u64. -/
+def time.Tick.Insts.CoreCmpPartialEqTick.ne (a b : time.Tick) : Result Bool :=
+  ok (decide (a ≠ b))
+
 /-- `Vec::remove(i)` takes the item at `i` out and shifts the rest
     left. It panics when `i` is not below the length. -/
 @[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::remove"]

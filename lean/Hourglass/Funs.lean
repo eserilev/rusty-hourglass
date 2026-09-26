@@ -363,6 +363,12 @@ def event.EventHistory.events
   (self : event.EventHistory) : Result (Slice event.Event) := do
   ok (alloc.vec.Vec.deref self)
 
+/-- [hourglass::event::{hourglass::event::EventHistory}::len]:
+    Source: 'src/event.rs', lines 166:4-168:5
+    Visibility: public -/
+def event.EventHistory.len (self : event.EventHistory) : Result Std.Usize := do
+  ok (alloc.vec.Vec.len self)
+
 /-- [hourglass::event::{hourglass::event::EventHistory}::truncate]:
     Source: 'src/event.rs', lines 185:4-190:5
     Visibility: public -/
@@ -922,6 +928,29 @@ def time.EntityId.Insts.CoreCmpPartialEqEntityId : core.cmp.PartialEq
   time.EntityId time.EntityId := {
   eq := time.EntityId.Insts.CoreCmpPartialEqEntityId.eq
   ne := time.EntityId.Insts.CoreCmpPartialEqEntityId.ne
+}
+
+/-- [hourglass::time::{impl core::cmp::PartialEq<hourglass::time::EventId> for hourglass::time::EventId}::eq]:
+    Source: 'src/time.rs', lines 20:24-20:33
+    Visibility: public -/
+def time.EventId.Insts.CoreCmpPartialEqEventId.eq
+  (self : time.EventId) (other : time.EventId) : Result Bool := do
+  ok (self = other)
+
+/-- [hourglass::time::{impl core::cmp::PartialEq<hourglass::time::Tick> for hourglass::time::Tick}::eq]:
+    Source: 'src/time.rs', lines 28:24-28:33
+    Visibility: public -/
+def time.Tick.Insts.CoreCmpPartialEqTick.eq
+  (self : time.Tick) (other : time.Tick) : Result Bool := do
+  ok (self = other)
+
+/-- Trait implementation: [hourglass::time::{impl core::cmp::PartialEq<hourglass::time::Tick> for hourglass::time::Tick}]
+    Source: 'src/time.rs', lines 28:24-28:33 -/
+@[reducible]
+def time.Tick.Insts.CoreCmpPartialEqTick : core.cmp.PartialEq time.Tick
+  time.Tick := {
+  eq := time.Tick.Insts.CoreCmpPartialEqTick.eq
+  ne := time.Tick.Insts.CoreCmpPartialEqTick.ne
 }
 
 /-- [hourglass::time::{hourglass::time::TimeSpan}::open]:
@@ -1695,6 +1724,915 @@ def validate.validate
     validate.update w who «name» linked_to «from» «to» out
   | event.EventKind.FactEnd who «name» linked_to =>
     validate.end w who «name» linked_to out
+
+/-- [hourglass::world::{hourglass::world::World}::len]:
+    Source: 'src/world.rs', lines 81:4-83:5
+    Visibility: public -/
+def world.World.len (self : world.World) : Result Std.Usize := do
+  ids.Ids.len self.entities
+
+/-- [hourglass::verify::up]: loop 0:
+    Source: 'src/verify.rs', lines 492:4-499:1 -/
+@[rust_loop]
+def verify.up_loop
+  (row : entity.Entity) (i : Std.Usize) : Result (Option time.EntityId) := do
+  let i1 := alloc.vec.Vec.len row.facts
+  if i < i1
+  then
+    let f ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice fact.Fact)
+        row.facts i
+    let s ← alloc.string.String.Insts.CoreOpsDerefDerefStr.deref f.name
+    let b ← fact.is_located_in s
+    if b
+    then ok f.linked_to
+    else let i2 ← i + 1#usize
+         verify.up_loop row i2
+  else ok none
+partial_fixpoint
+
+/-- [hourglass::verify::up]:
+    Source: 'src/verify.rs', lines 487:0-499:1 -/
+def verify.up
+  (w : world.World) («at» : time.EntityId) :
+  Result (Option time.EntityId)
+  := do
+  let o ← world.World.entity w «at»
+  match o with
+  | none => ok none
+  | some row => verify.up_loop row 0#usize
+
+/-- [hourglass::verify::walk_is_finite]: loop 0:
+    Source: 'src/verify.rs', lines 474:4-482:1 -/
+@[rust_loop]
+def verify.walk_is_finite_loop
+  (w : world.World) (n : Std.Usize) («at» : time.EntityId) (hops : Std.Usize)
+  :
+  Result Bool
+  := do
+  if hops < n
+  then
+    let o ← verify.up w «at»
+    match o with
+    | none => ok true
+    | some next =>
+      let hops1 ← hops + 1#usize
+      verify.walk_is_finite_loop w n next hops1
+  else let o ← verify.up w «at»
+       ok (core.option.Option.is_none o)
+partial_fixpoint
+
+/-- [hourglass::verify::walk_is_finite]:
+    Source: 'src/verify.rs', lines 470:0-482:1 -/
+def verify.walk_is_finite
+  (w : world.World) (start : time.EntityId) : Result Bool := do
+  let n ← world.World.len w
+  verify.walk_is_finite_loop w n start 0#usize
+
+/-- [hourglass::verify::slot_before]: loop 0:
+    Source: 'src/verify.rs', lines 397:4-404:1 -/
+@[rust_loop]
+def verify.slot_before_loop
+  (facts : Slice fact.Fact) (i : Std.Usize) (j : Std.Usize) : Result Bool := do
+  if j < i
+  then
+    let f ← Slice.index_usize facts j
+    let f1 ← Slice.index_usize facts i
+    let b ←
+      alloc.string.String.Insts.CoreCmpPartialEqString.eq f.name f1.name
+    if b
+    then
+      let b1 ←
+        core.option.Option.Insts.CoreCmpPartialEqOption.eq
+          time.EntityId.Insts.CoreCmpPartialEqEntityId f.linked_to f1.linked_to
+      if b1
+      then ok true
+      else let j1 ← j + 1#usize
+           verify.slot_before_loop facts i j1
+    else let j1 ← j + 1#usize
+         verify.slot_before_loop facts i j1
+  else ok false
+partial_fixpoint
+
+/-- [hourglass::verify::slot_before]:
+    Source: 'src/verify.rs', lines 395:0-404:1 -/
+@[reducible]
+def verify.slot_before
+  (facts : Slice fact.Fact) (i : Std.Usize) : Result Bool := do
+  verify.slot_before_loop facts i 0#usize
+
+/-- [hourglass::verify::first_target]: loop 0:
+    Source: 'src/verify.rs', lines 457:4-464:1 -/
+@[rust_loop]
+def verify.first_target_loop
+  (facts : Slice fact.Fact) («name» : String) (i : Std.Usize) (j : Std.Usize)
+  :
+  Result Bool
+  := do
+  if j < i
+  then
+    let f ← Slice.index_usize facts j
+    let b ←
+      alloc.string.String.Insts.CoreCmpPartialEqString.eq f.name «name»
+    if b
+    then
+      let f1 ← Slice.index_usize facts i
+      let b1 ←
+        core.option.Option.Insts.CoreCmpPartialEqOption.eq
+          time.EntityId.Insts.CoreCmpPartialEqEntityId f.linked_to f1.linked_to
+      if b1
+      then ok false
+      else let j1 ← j + 1#usize
+           verify.first_target_loop facts «name» i j1
+    else let j1 ← j + 1#usize
+         verify.first_target_loop facts «name» i j1
+  else ok true
+partial_fixpoint
+
+/-- [hourglass::verify::first_target]:
+    Source: 'src/verify.rs', lines 452:0-464:1 -/
+def verify.first_target
+  (facts : Slice fact.Fact) («name» : String) (i : Std.Usize) :
+  Result Bool
+  := do
+  let f ← Slice.index_usize facts i
+  let b ← alloc.string.String.Insts.CoreCmpPartialEqString.ne f.name «name»
+  if b
+  then ok false
+  else
+    let b1 := core.option.Option.is_none f.linked_to
+    if b1
+    then ok false
+    else verify.first_target_loop facts «name» i 0#usize
+
+/-- [hourglass::verify::distinct_targets]: loop 0:
+    Source: 'src/verify.rs', lines 441:4-446:5 -/
+@[rust_loop]
+def verify.distinct_targets_loop
+  (facts : Slice fact.Fact) («name» : String) (n : Std.Usize) (i : Std.Usize)
+  :
+  Result Std.Usize
+  := do
+  let i1 := Slice.len facts
+  if i < i1
+  then
+    let b ← verify.first_target facts «name» i
+    let n1 ← if b
+               then n + 1#usize
+               else ok n
+    let i2 ← i + 1#usize
+    verify.distinct_targets_loop facts «name» n1 i2
+  else ok n
+partial_fixpoint
+
+/-- [hourglass::verify::distinct_targets]:
+    Source: 'src/verify.rs', lines 438:0-448:1 -/
+@[reducible]
+def verify.distinct_targets
+  (facts : Slice fact.Fact) («name» : String) : Result Std.Usize := do
+  verify.distinct_targets_loop facts «name» 0#usize 0#usize
+
+/-- [hourglass::verify::targets_fit]:
+    Source: 'src/verify.rs', lines 387:0-392:1 -/
+def verify.targets_fit
+  (e : entity.Entity) (targets : fact.Count) (f : fact.Fact) :
+  Result Bool
+  := do
+  let o ← fact.Count.limit targets
+  match o with
+  | none => ok true
+  | some limit =>
+    let s := alloc.vec.Vec.deref e.facts
+    let i ← verify.distinct_targets s f.name
+    let i1 ← lift (core.convert.num.FromUsizeU16.from limit)
+    ok (i <= i1)
+
+/-- [hourglass::verify::holds_slot]: loop 0:
+    Source: 'src/verify.rs', lines 427:4-434:1 -/
+@[rust_loop]
+def verify.holds_slot_loop
+  («name» : String) (target : time.EntityId) (e : entity.Entity)
+  (i : Std.Usize) :
+  Result Bool
+  := do
+  let i1 := alloc.vec.Vec.len e.facts
+  if i < i1
+  then
+    let f ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice fact.Fact)
+        e.facts i
+    let b ←
+      alloc.string.String.Insts.CoreCmpPartialEqString.eq f.name «name»
+    if b
+    then
+      let b1 ←
+        core.option.Option.Insts.CoreCmpPartialEqOption.eq
+          time.EntityId.Insts.CoreCmpPartialEqEntityId f.linked_to (some
+          target)
+      if b1
+      then ok true
+      else let i2 ← i + 1#usize
+           verify.holds_slot_loop «name» target e i2
+    else let i2 ← i + 1#usize
+         verify.holds_slot_loop «name» target e i2
+  else ok false
+partial_fixpoint
+
+/-- [hourglass::verify::holds_slot]:
+    Source: 'src/verify.rs', lines 422:0-434:1 -/
+def verify.holds_slot
+  (w : world.World) (key : time.EntityId) («name» : String)
+  (target : time.EntityId) :
+  Result Bool
+  := do
+  let o ← world.World.entity w key
+  match o with
+  | none => ok false
+  | some e => verify.holds_slot_loop «name» target e 0#usize
+
+/-- [hourglass::verify::holders_count]: loop 0:
+    Source: 'src/verify.rs', lines 412:4-417:5 -/
+@[rust_loop]
+def verify.holders_count_loop
+  (w : world.World) («name» : String) (target : time.EntityId)
+  (ids : alloc.vec.Vec time.EntityId) (n : Std.Usize) (i : Std.Usize) :
+  Result Std.Usize
+  := do
+  let i1 := alloc.vec.Vec.len ids
+  if i < i1
+  then
+    let ei ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice time.EntityId)
+        ids i
+    let b ← verify.holds_slot w ei «name» target
+    let n1 ← if b
+               then n + 1#usize
+               else ok n
+    let i2 ← i + 1#usize
+    verify.holders_count_loop w «name» target ids n1 i2
+  else ok n
+partial_fixpoint
+
+/-- [hourglass::verify::holders_count]:
+    Source: 'src/verify.rs', lines 408:0-419:1 -/
+def verify.holders_count
+  (w : world.World) («name» : String) (target : time.EntityId) :
+  Result Std.Usize
+  := do
+  let ids ← world.World.entity_ids w
+  verify.holders_count_loop w «name» target ids 0#usize 0#usize
+
+/-- [hourglass::verify::holders_fit]:
+    Source: 'src/verify.rs', lines 380:0-385:1 -/
+def verify.holders_fit
+  (w : world.World) (holders : fact.Count) (f : fact.Fact) : Result Bool := do
+  let o ← fact.Count.limit holders
+  match o with
+  | none => ok true
+  | some limit =>
+    match f.linked_to with
+    | none => ok true
+    | some target =>
+      let i ← verify.holders_count w f.name target
+      let i1 ← lift (core.convert.num.FromUsizeU16.from limit)
+      ok (i <= i1)
+
+/-- [hourglass::verify::counts_hold]:
+    Source: 'src/verify.rs', lines 370:0-378:1 -/
+def verify.counts_hold
+  (w : world.World) (e : entity.Entity) (rules : fact.FactRules)
+  (f : fact.Fact) :
+  Result Bool
+  := do
+  match rules with
+  | fact.FactRules.Solo _ => ok true
+  | fact.FactRules.Linked _ holders targets _ =>
+    let b ← verify.holders_fit w holders f
+    if b
+    then verify.targets_fit e targets f
+    else ok false
+
+/-- [hourglass::verify::link_fits]:
+    Source: 'src/verify.rs', lines 353:0-368:1 -/
+def verify.link_fits
+  (w : world.World) (e : entity.Entity) (rules : fact.FactRules)
+  (f : fact.Fact) :
+  Result Bool
+  := do
+  let b ← fact.FactRules.takes_target rules
+  if b
+  then
+    match f.linked_to with
+    | none => ok false
+    | some target =>
+      let b1 ← time.EntityId.Insts.CoreCmpPartialEqEntityId.eq target e.id
+      if b1
+      then ok false
+      else
+        let o ← world.World.type_of w target
+        match o with
+        | none => ok false
+        | some other => fact.FactRules.type_allowed rules e.entity_type other
+  else match f.linked_to with
+       | none => ok true
+       | some _ => ok false
+
+/-- [hourglass::verify::value_fits]:
+    Source: 'src/verify.rs', lines 344:0-351:1 -/
+def verify.value_fits
+  (rules : fact.FactRules) (f : fact.Fact) : Result Bool := do
+  let s ← fact.FactRules.shape rules
+  match s with
+  | fact.Shape.Flag _ =>
+    match f.value with
+    | none => ok true
+    | some _ => ok false
+  | fact.Shape.Number band _ =>
+    match f.value with
+    | none => ok false
+    | some n => fact.Band.holds band n
+
+/-- [hourglass::world::{hourglass::world::World}::history]:
+    Source: 'src/world.rs', lines 94:4-96:5
+    Visibility: public -/
+def world.World.impl.history
+  (self : world.World) : Result event.EventHistory := do
+  ok self.history
+
+/-- [hourglass::verify::opened_inside]:
+    Source: 'src/verify.rs', lines 340:0-342:1 -/
+def verify.opened_inside (w : world.World) (f : fact.Fact) : Result Bool := do
+  let i := f.opened
+  let i1 ← lift (UScalar.cast .Usize i)
+  let eh ← world.World.impl.history w
+  let i2 ← event.EventHistory.len eh
+  ok (i1 < i2)
+
+/-- [hourglass::verify::fact_sound]:
+    Source: 'src/verify.rs', lines 322:0-338:1 -/
+def verify.fact_sound
+  (w : world.World) (e : entity.Entity) (i : Std.Usize) : Result Bool := do
+  let f ←
+    alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice fact.Fact)
+      e.facts i
+  let o ← fact.FactVocabulary.rules_key w.vocabulary f.name
+  match o with
+  | none => ok false
+  | some rules =>
+    let s := alloc.vec.Vec.deref e.facts
+    let b ← verify.slot_before s i
+    if b
+    then ok false
+    else
+      let b1 ← verify.opened_inside w f
+      if b1
+      then
+        let b2 ← verify.value_fits rules f
+        if b2
+        then
+          let b3 ← verify.link_fits w e rules f
+          if b3
+          then verify.counts_hold w e rules f
+          else ok false
+        else ok false
+      else ok false
+
+/-- [hourglass::verify::entity_sound]: loop 0:
+    Source: 'src/verify.rs', lines 312:4-320:1 -/
+@[rust_loop]
+def verify.entity_sound_loop
+  (w : world.World) (ei : time.EntityId) (et : entity.EntityType) (s : String)
+  (ts : time.TimeSpan) (v : alloc.vec.Vec fact.Fact) (i : Std.Usize) :
+  Result Bool
+  := do
+  let i1 := alloc.vec.Vec.len v
+  if i < i1
+  then
+    let b ←
+      verify.fact_sound w
+        {
+          id := ei,
+          entity_type := et,
+          «name» := s,
+          existence := ts,
+          facts := v
+        } i
+    if b
+    then let i2 ← i + 1#usize
+         verify.entity_sound_loop w ei et s ts v i2
+    else ok false
+  else verify.walk_is_finite w ei
+partial_fixpoint
+
+/-- [hourglass::verify::entity_sound]:
+    Source: 'src/verify.rs', lines 300:0-320:1 -/
+def verify.entity_sound
+  (w : world.World) (created : ids.Ids Unit) (key : time.EntityId) :
+  Result Bool
+  := do
+  let o ← world.World.entity w key
+  match o with
+  | none => ok false
+  | some e =>
+    let b ← ids.Ids.contains created e.id
+    if b
+    then
+      let b1 ← time.TimeSpan.sound e.existence
+      if b1
+      then
+        verify.entity_sound_loop w e.id e.entity_type e.name e.existence
+          e.facts 0#usize
+      else ok false
+    else ok false
+
+/-- [hourglass::verify::all_entities_sound]: loop 0:
+    Source: 'src/verify.rs', lines 279:4-286:1 -/
+@[rust_loop]
+def verify.all_entities_sound_loop
+  (w : world.World) (created : ids.Ids Unit)
+  (ids : alloc.vec.Vec time.EntityId) (k : Std.Usize) :
+  Result Bool
+  := do
+  let i := alloc.vec.Vec.len ids
+  if k < i
+  then
+    let ei ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice time.EntityId)
+        ids k
+    let b ← verify.entity_sound w created ei
+    if b
+    then let k1 ← k + 1#usize
+         verify.all_entities_sound_loop w created ids k1
+    else ok false
+  else ok true
+partial_fixpoint
+
+/-- [hourglass::verify::all_entities_sound]:
+    Source: 'src/verify.rs', lines 276:0-286:1 -/
+def verify.all_entities_sound
+  (w : world.World) (created : ids.Ids Unit) : Result Bool := do
+  let ids ← world.World.entity_ids w
+  verify.all_entities_sound_loop w created ids 0#usize
+
+/-- [hourglass::verify::created_once]:
+    Source: 'src/verify.rs', lines 290:0-298:1 -/
+def verify.created_once
+  (w : world.World) (created : ids.Ids Unit) (ev : event.Event) :
+  Result (Bool × (ids.Ids Unit))
+  := do
+  match ev.kind with
+  | event.EventKind.EntityCreated id _ _ =>
+    let b ← ids.Ids.contains created id
+    if b
+    then
+      let o ← world.World.entity w id
+      let b1 := core.option.Option.is_some o
+      if b1
+      then ok (false, created)
+      else let created1 ← ids.Ids.insert created id ()
+           ok (true, created1)
+    else let created1 ← ids.Ids.insert created id ()
+         ok (true, created1)
+  | event.EventKind.EntityDestroyed _ => ok (true, created)
+  | event.EventKind.FactStart _ _ _ _ => ok (true, created)
+  | event.EventKind.FactUpdate _ _ _ _ _ => ok (true, created)
+  | event.EventKind.FactEnd _ _ _ => ok (true, created)
+
+/-- [hourglass::verify::all_created_once]: loop 0:
+    Source: 'src/verify.rs', lines 267:4-274:1 -/
+@[rust_loop]
+def verify.all_created_once_loop
+  (w : world.World) (created : ids.Ids Unit) (evs : Slice event.Event)
+  (i : Std.Usize) :
+  Result (Bool × (ids.Ids Unit))
+  := do
+  let i1 := Slice.len evs
+  if i < i1
+  then
+    let e ← Slice.index_usize evs i
+    let (b, created1) ← verify.created_once w created e
+    if b
+    then let i2 ← i + 1#usize
+         verify.all_created_once_loop w created1 evs i2
+    else ok (false, created1)
+  else ok (true, created)
+partial_fixpoint
+
+/-- [hourglass::verify::all_created_once]:
+    Source: 'src/verify.rs', lines 264:0-274:1 -/
+def verify.all_created_once
+  (w : world.World) (created : ids.Ids Unit) :
+  Result (Bool × (ids.Ids Unit))
+  := do
+  let eh ← world.World.impl.history w
+  let evs ← event.EventHistory.events eh
+  verify.all_created_once_loop w created evs 0#usize
+
+/-- [hourglass::verify::sound]:
+    Source: 'src/verify.rs', lines 255:0-262:1 -/
+def verify.sound (w : world.World) : Result Bool := do
+  let created ← ids.Ids.new Unit
+  let (b, created1) ← verify.all_created_once w created
+  if b
+  then verify.all_entities_sound w created1
+  else ok false
+
+/-- [hourglass::verify::ticks_rise]: loop 0:
+    Source: 'src/verify.rs', lines 244:4-252:1 -/
+@[rust_loop]
+def verify.ticks_rise_loop
+  (w : world.World) (evs : Slice event.Event) (last : time.Tick)
+  (i : Std.Usize) :
+  Result Bool
+  := do
+  let i1 := Slice.len evs
+  if i < i1
+  then
+    let e ← Slice.index_usize evs i
+    let b ← time.Tick.Insts.CoreCmpPartialOrdTick.lt e.tick last
+    if b
+    then ok false
+    else let i2 ← i + 1#usize
+         verify.ticks_rise_loop w evs e.tick i2
+  else time.Tick.Insts.CoreCmpPartialOrdTick.ge w.tick last
+partial_fixpoint
+
+/-- [hourglass::verify::ticks_rise]:
+    Source: 'src/verify.rs', lines 240:0-252:1 -/
+def verify.ticks_rise (w : world.World) : Result Bool := do
+  let eh ← world.World.impl.history w
+  let evs ← event.EventHistory.events eh
+  verify.ticks_rise_loop w evs 0#u64 0#usize
+
+/-- [hourglass::verify::same_slot]:
+    Source: 'src/verify.rs', lines 235:0-237:1 -/
+def verify.same_slot
+  (slot : (String × (Option Std.I64) × (Option time.EntityId) ×
+  time.EventId)) (f : fact.Fact) :
+  Result Bool
+  := do
+  let (s, o, o1, ei) := slot
+  let b ← alloc.string.String.Insts.CoreCmpPartialEqString.eq s f.name
+  if b
+  then
+    let b1 ←
+      core.option.Option.Insts.CoreCmpPartialEqOption.eq core.cmp.PartialEqI64
+        o f.value
+    if b1
+    then
+      let b2 ←
+        core.option.Option.Insts.CoreCmpPartialEqOption.eq
+          time.EntityId.Insts.CoreCmpPartialEqEntityId o1 f.linked_to
+      if b2
+      then time.EventId.Insts.CoreCmpPartialEqEventId.eq ei f.opened
+      else ok false
+    else ok false
+  else ok false
+
+/-- [hourglass::verify::same_row]: loop 0:
+    Source: 'src/verify.rs', lines 226:4-233:1 -/
+@[rust_loop]
+def verify.same_row_loop
+  (v : alloc.vec.Vec fact.Fact)
+  (v1 : alloc.vec.Vec (String × (Option Std.I64) × (Option time.EntityId) ×
+  time.EventId)) (i : Std.Usize) :
+  Result Bool
+  := do
+  let i1 := alloc.vec.Vec.len v1
+  if i < i1
+  then
+    let t ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice (String ×
+        (Option Std.I64) × (Option time.EntityId) × time.EventId)) v1 i
+    let f ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice fact.Fact) v i
+    let b ← verify.same_slot t f
+    if b
+    then let i2 ← i + 1#usize
+         verify.same_row_loop v v1 i2
+    else ok false
+  else ok true
+partial_fixpoint
+
+/-- [hourglass::verify::same_row]:
+    Source: 'src/verify.rs', lines 209:0-233:1 -/
+def verify.same_row
+  (w : world.World) (rows : ids.Ids verify.Row) (key : time.EntityId) :
+  Result Bool
+  := do
+  let o ← world.World.entity w key
+  match o with
+  | none => ok false
+  | some e =>
+    let o1 ← ids.Ids.get rows e.id
+    match o1 with
+    | none => ok false
+    | some row =>
+      let b ←
+        entity.EntityType.Insts.CoreCmpPartialEqEntityType.ne row.kind
+          e.entity_type
+      if b
+      then ok false
+      else
+        let b1 ←
+          alloc.string.String.Insts.CoreCmpPartialEqString.ne row.name e.name
+        if b1
+        then ok false
+        else
+          let b2 ←
+            time.Tick.Insts.CoreCmpPartialEqTick.ne row.from e.existence.from
+          if b2
+          then ok false
+          else
+            let b3 ←
+              core.option.Option.Insts.CoreCmpPartialEqOption.ne
+                time.Tick.Insts.CoreCmpPartialEqTick row.until
+                e.existence.until
+            if b3
+            then ok false
+            else
+              let i := alloc.vec.Vec.len row.slots
+              let i1 := alloc.vec.Vec.len e.facts
+              if i != i1
+              then ok false
+              else verify.same_row_loop e.facts row.slots 0#usize
+
+/-- [hourglass::verify::same_state]: loop 0:
+    Source: 'src/verify.rs', lines 200:4-207:1 -/
+@[rust_loop]
+def verify.same_state_loop
+  (w : world.World) (rows : ids.Ids verify.Row)
+  (ids : alloc.vec.Vec time.EntityId) (i : Std.Usize) :
+  Result Bool
+  := do
+  let i1 := alloc.vec.Vec.len ids
+  if i < i1
+  then
+    let ei ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice time.EntityId)
+        ids i
+    let b ← verify.same_row w rows ei
+    if b
+    then let i2 ← i + 1#usize
+         verify.same_state_loop w rows ids i2
+    else ok false
+  else verify.ticks_rise w
+partial_fixpoint
+
+/-- [hourglass::verify::same_state]:
+    Source: 'src/verify.rs', lines 194:0-207:1 -/
+def verify.same_state
+  (w : world.World) (rows : ids.Ids verify.Row) : Result Bool := do
+  let i ← world.World.len w
+  let i1 ← ids.Ids.len rows
+  if i != i1
+  then ok false
+  else
+    let ids ← world.World.entity_ids w
+    verify.same_state_loop w rows ids 0#usize
+
+/-- [hourglass::verify::one_target]:
+    Source: 'src/verify.rs', lines 186:0-191:1 -/
+def verify.one_target (w : world.World) («name» : String) : Result Bool := do
+  let o ← fact.FactVocabulary.rules_key w.vocabulary «name»
+  match o with
+  | none => ok false
+  | some fr =>
+    match fr with
+    | fact.FactRules.Solo _ => ok false
+    | fact.FactRules.Linked _ _ targets _ =>
+      let o1 ← fact.Count.limit targets
+      core.option.Option.Insts.CoreCmpPartialEqOption.eq core.cmp.PartialEqU16
+        o1 (some 1#u16)
+
+/-- [hourglass::verify::update_slot]:
+    Source: 'src/verify.rs', lines 176:0-181:1 -/
+def verify.update_slot
+  (slot : (String × (Option Std.I64) × (Option time.EntityId) ×
+  time.EventId)) («name» : String) (linked_to : Option time.EntityId)
+  («to» : Std.I64) (id : time.EventId) :
+  Result (String × (Option Std.I64) × (Option time.EntityId) × time.EventId)
+  := do
+  let (s, _, o, _) := slot
+  let b ← alloc.string.String.Insts.CoreCmpPartialEqString.eq s «name»
+  if b
+  then
+    let b1 ←
+      core.option.Option.Insts.CoreCmpPartialEqOption.eq
+        time.EntityId.Insts.CoreCmpPartialEqEntityId o linked_to
+    if b1
+    then ok (s, some «to», o, id)
+    else ok slot
+  else ok slot
+
+/-- [hourglass::verify::keep_slot]:
+    Source: 'src/verify.rs', lines 158:0-173:1 -/
+def verify.keep_slot
+  (kept : alloc.vec.Vec (String × (Option Std.I64) × (Option time.EntityId)
+  × time.EventId))
+  (slot : (String × (Option Std.I64) × (Option time.EntityId) ×
+  time.EventId)) («name» : String) (linked_to : Option time.EntityId)
+  (wide : Bool) :
+  Result (alloc.vec.Vec (String × (Option Std.I64) × (Option time.EntityId)
+    × time.EventId))
+  := do
+  let (s, o, o1, ei, clash) ←
+    if wide
+    then
+      do
+      let (s1, o2, o3, ei1) := slot
+      let clash1 ←
+        alloc.string.String.Insts.CoreCmpPartialEqString.eq s1 «name»
+      ok (s1, o2, o3, ei1, clash1)
+    else
+      do
+      let (s1, o2, o3, ei1) := slot
+      let b ← alloc.string.String.Insts.CoreCmpPartialEqString.eq s1 «name»
+      let b1 ←
+        if b
+        then
+          core.option.Option.Insts.CoreCmpPartialEqOption.eq
+            time.EntityId.Insts.CoreCmpPartialEqEntityId o3 linked_to
+        else ok false
+      ok (s1, o2, o3, ei1, b1)
+  if clash
+  then ok kept
+  else
+    let s1 ← alloc.string.String.Insts.CoreCloneClone.clone s
+    alloc.vec.Vec.push kept (s1, o, o1, ei)
+
+/-- [hourglass::verify::kept_slots]: loop 0:
+    Source: 'src/verify.rs', lines 150:4-153:5 -/
+@[rust_loop]
+def verify.kept_slots_loop
+  (slots : Slice (String × (Option Std.I64) × (Option time.EntityId) ×
+  time.EventId)) («name» : String) (linked_to : Option time.EntityId)
+  (wide : Bool)
+  (kept : alloc.vec.Vec (String × (Option Std.I64) × (Option time.EntityId)
+  × time.EventId)) (i : Std.Usize) :
+  Result (alloc.vec.Vec (String × (Option Std.I64) × (Option time.EntityId)
+    × time.EventId))
+  := do
+  let i1 := Slice.len slots
+  if i < i1
+  then
+    let t ← Slice.index_usize slots i
+    let kept1 ← verify.keep_slot kept t «name» linked_to wide
+    let i2 ← i + 1#usize
+    verify.kept_slots_loop slots «name» linked_to wide kept1 i2
+  else ok kept
+partial_fixpoint
+
+/-- [hourglass::verify::kept_slots]:
+    Source: 'src/verify.rs', lines 142:0-155:1 -/
+@[reducible]
+def verify.kept_slots
+  (slots : Slice (String × (Option Std.I64) × (Option time.EntityId) ×
+  time.EventId)) («name» : String) (linked_to : Option time.EntityId)
+  (wide : Bool) :
+  Result (alloc.vec.Vec (String × (Option Std.I64) × (Option time.EntityId)
+    × time.EventId))
+  := do
+  verify.kept_slots_loop slots «name» linked_to wide (alloc.vec.Vec.new
+    (String × (Option Std.I64) × (Option time.EntityId) × time.EventId))
+    0#usize
+
+/-- [hourglass::verify::refold_one]: loop 0:
+    Source: 'src/verify.rs', lines 119:16-122:17 -/
+@[rust_loop]
+def verify.refold_one_loop
+  (ei : time.EventId) («name» : String) (linked_to : Option time.EntityId)
+  («to» : Std.I64) (row : verify.Row) (j : Std.Usize) :
+  Result (entity.EntityType × String × time.Tick × (Option time.Tick) ×
+    (alloc.vec.Vec (String × (Option Std.I64) × (Option time.EntityId) ×
+    time.EventId)))
+  := do
+  let i := alloc.vec.Vec.len row.slots
+  if j < i
+  then
+    let (t, index_mut_back) ←
+      alloc.vec.Vec.index_mut (core.slice.index.SliceIndexUsizeSlice (String ×
+        (Option Std.I64) × (Option time.EntityId) × time.EventId)) 
+        row.slots j
+    let t1 ← verify.update_slot t «name» linked_to «to» ei
+    let j1 ← j + 1#usize
+    let v := index_mut_back t1
+    verify.refold_one_loop ei «name» linked_to «to» { row with slots := v }
+      j1
+  else ok (row.kind, row.name, row.from, row.until, row.slots)
+partial_fixpoint
+
+/-- [hourglass::verify::refold_one]:
+    Source: 'src/verify.rs', lines 68:0-137:1 -/
+def verify.refold_one
+  (w : world.World) (rows : ids.Ids verify.Row) (ev : event.Event) :
+  Result (ids.Ids verify.Row)
+  := do
+  match ev.kind with
+  | event.EventKind.EntityCreated id entity_type «name» =>
+    let b ← ids.Ids.contains rows id
+    if b
+    then ok rows
+    else
+      let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+      ids.Ids.insert rows id
+        ({
+           kind := entity_type,
+           «name» := s,
+           «from» := ev.tick,
+           «until» := none,
+           slots :=
+             (alloc.vec.Vec.new
+               (String
+               ×
+               (Option
+               Std.I64)
+               ×
+               (Option
+               time.EntityId)
+               ×
+               time.EventId))
+         } : verify.Row)
+  | event.EventKind.EntityDestroyed id =>
+    let (o, rows1) ← ids.Ids.take rows id
+    match o with
+    | none => ok rows1
+    | some row =>
+      let b := core.option.Option.is_none row.until
+      let o1 ← if b
+                 then ok (some ev.tick)
+                 else ok row.until
+      ids.Ids.insert rows1 id { row with «until» := o1 }
+  | event.EventKind.FactStart who «name» value linked_to =>
+    let wide ← verify.one_target w «name»
+    let (o, rows1) ← ids.Ids.take rows who
+    match o with
+    | none => ok rows1
+    | some row =>
+      let s := alloc.vec.Vec.deref row.slots
+      let kept ← verify.kept_slots s «name» linked_to wide
+      let s1 ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+      let kept1 ← alloc.vec.Vec.push kept (s1, value, linked_to, ev.id)
+      ids.Ids.insert rows1 who { row with slots := kept1 }
+  | event.EventKind.FactUpdate who «name» linked_to _ «to» =>
+    let (o, rows1) ← ids.Ids.take rows who
+    match o with
+    | none => ok rows1
+    | some row =>
+      let (et, s, t, o1, v) ←
+        verify.refold_one_loop ev.id «name» linked_to «to» row 0#usize
+      ids.Ids.insert rows1 who
+        ({
+           kind := et,
+           «name» := s,
+           «from» := t,
+           «until» := o1,
+           slots := v
+         } : verify.Row)
+  | event.EventKind.FactEnd who «name» linked_to =>
+    let (o, rows1) ← ids.Ids.take rows who
+    match o with
+    | none => ok rows1
+    | some row =>
+      let s := alloc.vec.Vec.deref row.slots
+      let v ← verify.kept_slots s «name» linked_to false
+      ids.Ids.insert rows1 who { row with slots := v }
+
+/-- [hourglass::verify::refold]: loop 0:
+    Source: 'src/verify.rs', lines 61:4-64:5 -/
+@[rust_loop]
+def verify.refold_loop
+  (w : world.World) (evs : Slice event.Event) (rows : ids.Ids verify.Row)
+  (i : Std.Usize) :
+  Result (ids.Ids verify.Row)
+  := do
+  let i1 := Slice.len evs
+  if i < i1
+  then
+    let e ← Slice.index_usize evs i
+    let rows1 ← verify.refold_one w rows e
+    let i2 ← i + 1#usize
+    verify.refold_loop w evs rows1 i2
+  else ok rows
+partial_fixpoint
+
+/-- [hourglass::verify::refold]:
+    Source: 'src/verify.rs', lines 57:0-66:1 -/
+def verify.refold (w : world.World) : Result (ids.Ids verify.Row) := do
+  let eh ← world.World.impl.history w
+  let evs ← event.EventHistory.events eh
+  let rows ← ids.Ids.new verify.Row
+  verify.refold_loop w evs rows 0#usize
+
+/-- [hourglass::verify::verify]:
+    Source: 'src/verify.rs', lines 51:0-54:1
+    Visibility: public -/
+def verify.verify (w : world.World) : Result Bool := do
+  let rows ← verify.refold w
+  let b ← verify.same_state w rows
+  if b
+  then verify.sound w
+  else ok false
 
 /-- [hourglass::world::{hourglass::world::World}::new]:
     Source: 'src/world.rs', lines 63:4-70:5

@@ -322,7 +322,6 @@ What waits: no law reads the remaining code yet.
 | A `&'static str` label, and the text of a rejection | `EntityType::label`, `EventKind` label, `Direction::label`, `Shape::label`, `reject.rs` lines 221 and 326 | None. These are text, and no law reads them. Keep them out of the marks. |
 | An iterator chain with a closure | `Entity::fact`, `World::contents`, `holders_of`, `targets_of`, `facts_linked_to`, `memory_names` | Write each one as an explicit loop over the wrapper walk. |
 | A closure that captures `&mut self` | `World::propose_all` | A loop that calls `propose`. |
-| A return inside a nested loop | `verify::same_state`, `verify::sound` | Move the inner loop into a helper function that returns a flag. |
 
 ## Known Aeneas limits
 

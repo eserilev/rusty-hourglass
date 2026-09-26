@@ -1,14 +1,17 @@
 //! The self check: a referee, not an echo.
 //!
 //! `verify` reads a world and answers whether it obeys every
-//! invariant of the spec. The claim the tests make is total: for
-//! every proposal, `propose` refuses, or `verify` passes on the
-//! world that `propose` leaves behind.
+//! invariant of the spec. The claim is total: for every proposal,
+//! `propose` refuses, or `verify` passes on the world that `propose`
+//! leaves behind.
 //!
-//! The check shares no code path with `apply`. It folds the
-//! history with its own writer, over its own rows, and then it
-//! compares. So a bug in `apply` shows up as a disagreement
+//! The check shares no code path with `apply` or with the gate. It
+//! folds the history with its own writer, over its own rows, and then
+//! it compares. So a bug in `apply` shows up as a disagreement
 //! between two independent programs.
+//!
+//! The code is a set of index loops, so Aeneas translates it. Each
+//! loop body with an early answer is a function of its own.
 //!
 //! The invariants, from the spec:
 //!
@@ -25,15 +28,15 @@
 //! 11. Every entity in the state has exactly one creation event.
 //! 12. The ticks of the history never fall.
 
-use crate::entity::EntityType;
-use crate::event::EventKind;
-use crate::fact::{FactRules, Shape, LOCATED_IN};
+use crate::entity::{Entity, EntityType};
+use crate::event::{Event, EventKind};
+use crate::fact::{is_located_in, Count, Fact, FactRules, Shape};
+use crate::ids::Ids;
 use crate::time::{EntityId, EventId, Tick};
 use crate::world::World;
-use std::collections::{BTreeMap, BTreeSet};
 
-/// One row of the referee state. A tuple list, not the struct of
-/// the crate, so the two folds share no shape.
+/// One row of the referee state. A tuple, not the struct of the
+/// crate, so the two folds share no shape.
 type Slot = (String, Option<i64>, Option<EntityId>, EventId);
 
 struct Row {
@@ -44,257 +47,453 @@ struct Row {
     slots: Vec<Slot>,
 }
 
-pub fn verify(world: &World) -> bool {
-    let rows = refold(world);
-    same_state(world, &rows) && sound(world)
+#[cfg_attr(charon, verify::start_from)]
+pub fn verify(w: &World) -> bool {
+    let rows = refold(w);
+    same_state(w, &rows) && sound(w)
 }
 
 /// Fold the history again, with the other writer.
-fn refold(world: &World) -> BTreeMap<EntityId, Row> {
-    let mut rows: BTreeMap<EntityId, Row> = BTreeMap::new();
-    for event in world.history().iter() {
-        match &event.kind {
-            EventKind::EntityCreated {
-                id,
-                entity_type,
-                name,
-            } => {
-                if !rows.contains_key(id) {
-                    rows.insert(
-                        *id,
-                        Row {
-                            kind: *entity_type,
-                            name: name.clone(),
-                            from: event.tick,
-                            until: None,
-                            slots: Vec::new(),
-                        },
-                    );
-                }
-            }
-            EventKind::EntityDestroyed { id } => {
-                if let Some(row) = rows.get_mut(id) {
-                    if row.until.is_none() {
-                        row.until = Some(event.tick);
-                    }
-                }
-            }
-            EventKind::FactStart {
-                entity,
-                name,
-                value,
-                linked_to,
-            } => {
-                let wide = one_target(world, name);
-                if let Some(row) = rows.get_mut(entity) {
-                    let mut kept: Vec<Slot> = Vec::new();
-                    for slot in row.slots.drain(..) {
-                        let clash = if wide {
-                            slot.0 == *name
-                        } else {
-                            slot.0 == *name && slot.2 == *linked_to
-                        };
-                        if !clash {
-                            kept.push(slot);
-                        }
-                    }
-                    kept.push((name.clone(), *value, *linked_to, event.id));
-                    row.slots = kept;
-                }
-            }
-            EventKind::FactUpdate {
-                entity,
-                name,
-                linked_to,
-                to,
-                ..
-            } => {
-                if let Some(row) = rows.get_mut(entity) {
-                    for slot in row.slots.iter_mut() {
-                        if slot.0 == *name && slot.2 == *linked_to {
-                            slot.1 = Some(*to);
-                            slot.3 = event.id;
-                        }
-                    }
-                }
-            }
-            EventKind::FactEnd {
-                entity,
-                name,
-                linked_to,
-            } => {
-                if let Some(row) = rows.get_mut(entity) {
-                    row.slots
-                        .retain(|slot| !(slot.0 == *name && slot.2 == *linked_to));
-                }
-            }
-        }
+fn refold(w: &World) -> Ids<Row> {
+    let evs = w.history().events();
+    let mut rows = Ids::new();
+    let mut i = 0;
+    while i < evs.len() {
+        refold_one(w, &mut rows, &evs[i]);
+        i += 1;
     }
     rows
 }
 
+fn refold_one(w: &World, rows: &mut Ids<Row>, ev: &Event) {
+    match &ev.kind {
+        EventKind::EntityCreated {
+            id,
+            entity_type,
+            name,
+        } => {
+            if !rows.contains(*id) {
+                rows.insert(
+                    *id,
+                    Row {
+                        kind: *entity_type,
+                        name: name.clone(),
+                        from: ev.tick,
+                        until: None,
+                        slots: Vec::new(),
+                    },
+                );
+            }
+        }
+        EventKind::EntityDestroyed { id } => {
+            if let Some(mut row) = rows.take(*id) {
+                if row.until.is_none() {
+                    row.until = Some(ev.tick);
+                }
+                rows.insert(*id, row);
+            }
+        }
+        EventKind::FactStart {
+            entity: who,
+            name,
+            value,
+            linked_to,
+        } => {
+            let wide = one_target(w, name);
+            if let Some(mut row) = rows.take(*who) {
+                let mut kept = kept_slots(&row.slots, name, *linked_to, wide);
+                kept.push((name.clone(), *value, *linked_to, ev.id));
+                row.slots = kept;
+                rows.insert(*who, row);
+            }
+        }
+        EventKind::FactUpdate {
+            entity: who,
+            name,
+            linked_to,
+            to,
+            ..
+        } => {
+            if let Some(mut row) = rows.take(*who) {
+                let mut j = 0;
+                while j < row.slots.len() {
+                    update_slot(&mut row.slots[j], name, *linked_to, *to, ev.id);
+                    j += 1;
+                }
+                rows.insert(*who, row);
+            }
+        }
+        EventKind::FactEnd {
+            entity: who,
+            name,
+            linked_to,
+        } => {
+            if let Some(mut row) = rows.take(*who) {
+                row.slots = kept_slots(&row.slots, name, *linked_to, false);
+                rows.insert(*who, row);
+            }
+        }
+    }
+}
+
+/// The slots that a start or an end keeps. A wide name clears every
+/// slot of the name, and a narrow one clears its own slot.
+#[allow(clippy::ptr_arg)]
+fn kept_slots(
+    slots: &[Slot],
+    name: &String,
+    linked_to: Option<EntityId>,
+    wide: bool,
+) -> Vec<Slot> {
+    let mut kept = Vec::new();
+    let mut i = 0;
+    while i < slots.len() {
+        keep_slot(&mut kept, &slots[i], name, linked_to, wide);
+        i += 1;
+    }
+    kept
+}
+
+#[allow(clippy::ptr_arg)]
+fn keep_slot(
+    kept: &mut Vec<Slot>,
+    slot: &Slot,
+    name: &String,
+    linked_to: Option<EntityId>,
+    wide: bool,
+) {
+    let clash = if wide {
+        slot.0 == *name
+    } else {
+        slot.0 == *name && slot.2 == linked_to
+    };
+    if !clash {
+        kept.push((slot.0.clone(), slot.1, slot.2, slot.3));
+    }
+}
+
+#[allow(clippy::ptr_arg)]
+fn update_slot(slot: &mut Slot, name: &String, linked_to: Option<EntityId>, to: i64, id: EventId) {
+    if slot.0 == *name && slot.2 == linked_to {
+        slot.1 = Some(to);
+        slot.3 = id;
+    }
+}
+
 /// Does one name allow one target at a time? Written again, from
 /// the vocabulary alone.
-fn one_target(world: &World, name: &str) -> bool {
-    match world.vocabulary.rules(name) {
+#[allow(clippy::ptr_arg)]
+fn one_target(w: &World, name: &String) -> bool {
+    match w.vocabulary.rules_key(name) {
         Some(FactRules::Linked { targets, .. }) => targets.limit() == Some(1),
         _ => false,
     }
 }
 
 /// Invariant 1. The state is the fold of the history.
-fn same_state(world: &World, rows: &BTreeMap<EntityId, Row>) -> bool {
-    if world.len() != rows.len() {
+fn same_state(w: &World, rows: &Ids<Row>) -> bool {
+    if w.len() != rows.len() {
         return false;
     }
-    for entity in world.entities() {
-        let Some(row) = rows.get(&entity.id) else {
-            return false;
-        };
-        if row.kind != entity.entity_type || row.name != entity.name {
-            return false;
-        }
-        if row.from != entity.existence.from || row.until != entity.existence.until {
+    let ids = w.entity_ids();
+    let mut i = 0;
+    while i < ids.len() {
+        if !same_row(w, rows, ids[i]) {
             return false;
         }
-        if row.slots.len() != entity.facts.len() {
-            return false;
-        }
-        for (slot, fact) in row.slots.iter().zip(entity.facts.iter()) {
-            if slot.0 != fact.name
-                || slot.1 != fact.value
-                || slot.2 != fact.linked_to
-                || slot.3 != fact.opened
-            {
-                return false;
-            }
-        }
+        i += 1;
     }
-    // Invariant 12, and the tick of the world.
-    let mut last = Tick(0);
-    for event in world.history().iter() {
-        if event.tick < last {
-            return false;
-        }
-        last = event.tick;
-    }
-    world.tick >= last
+    ticks_rise(w)
 }
 
-/// Invariants 2 to 11.
-fn sound(world: &World) -> bool {
-    let history = world.history();
-    // Invariant 11.
-    let mut created: BTreeSet<EntityId> = BTreeSet::new();
-    for event in history.iter() {
-        if let EventKind::EntityCreated { id, .. } = &event.kind {
-            if !created.insert(*id) && world.entity(*id).is_some() {
-                // A second creation of a live entity lets one
-                // handle name two things.
-                return false;
-            }
-        }
+fn same_row(w: &World, rows: &Ids<Row>, key: EntityId) -> bool {
+    let Some(e) = w.entity(key) else {
+        return false;
+    };
+    let Some(row) = rows.get(e.id) else {
+        return false;
+    };
+    if row.kind != e.entity_type || row.name != e.name {
+        return false;
     }
-    for entity in world.entities() {
-        if !created.contains(&entity.id) {
+    if row.from != e.existence.from || row.until != e.existence.until {
+        return false;
+    }
+    if row.slots.len() != e.facts.len() {
+        return false;
+    }
+    let mut i = 0;
+    while i < row.slots.len() {
+        if !same_slot(&row.slots[i], &e.facts[i]) {
             return false;
         }
-        // Invariant 5.
-        if !entity.existence.sound() {
-            return false;
-        }
-        let mut seen: BTreeSet<(&str, Option<EntityId>)> = BTreeSet::new();
-        for fact in &entity.facts {
-            // Invariant 2.
-            let Some(rules) = world.vocabulary.rules(&fact.name) else {
-                return false;
-            };
-            // Invariant 3.
-            if !seen.insert((fact.name.as_str(), fact.linked_to)) {
-                return false;
-            }
-            // Invariant 4.
-            if fact.opened.0 as usize >= history.len() {
-                return false;
-            }
-            // Invariant 10.
-            match (rules.shape(), fact.value) {
-                (Shape::Number { band, .. }, Some(n)) => {
-                    if !band.holds(n) {
-                        return false;
-                    }
-                }
-                (Shape::Number { .. }, None) => return false,
-                (Shape::Flag { .. }, Some(_)) => return false,
-                (Shape::Flag { .. }, None) => {}
-            }
-            // Invariant 9.
-            match (rules.takes_target(), fact.linked_to) {
-                (true, None) => return false,
-                (false, Some(_)) => return false,
-                (true, Some(target)) => {
-                    if target == entity.id {
-                        return false;
-                    }
-                    let Some(other) = world.type_of(target) else {
-                        return false;
-                    };
-                    if !rules.type_allowed(entity.entity_type, other) {
-                        return false;
-                    }
-                }
-                (false, None) => {}
-            }
-            // Invariants 6 and 7.
-            if let FactRules::Linked {
-                holders, targets, ..
-            } = rules
-            {
-                if let (Some(limit), Some(target)) = (holders.limit(), fact.linked_to) {
-                    if world.holders_of(&fact.name, target).len() > usize::from(limit) {
-                        return false;
-                    }
-                }
-                if let Some(limit) = targets.limit() {
-                    let mut at: BTreeSet<EntityId> = BTreeSet::new();
-                    for other in entity.facts.iter().filter(|f| f.name == fact.name) {
-                        if let Some(id) = other.linked_to {
-                            at.insert(id);
-                        }
-                    }
-                    if at.len() > usize::from(limit) {
-                        return false;
-                    }
-                }
-            }
-        }
-        // Invariant 8.
-        if !walk_is_finite(world, entity.id) {
-            return false;
-        }
+        i += 1;
     }
     true
 }
 
-/// Invariant 8, walked with its own visited set. The set stops the
-/// walk, so a long chain walks to its end.
-fn walk_is_finite(world: &World, start: EntityId) -> bool {
-    let mut seen: BTreeSet<EntityId> = BTreeSet::new();
-    seen.insert(start);
-    let mut at = start;
-    loop {
-        let Some(row) = world.entity(at) else {
-            return true;
-        };
-        let Some(up) = row.facts.iter().find(|f| f.name == LOCATED_IN) else {
-            return true;
-        };
-        let Some(next) = up.linked_to else {
-            return true;
-        };
-        if !seen.insert(next) {
+fn same_slot(slot: &Slot, f: &Fact) -> bool {
+    slot.0 == f.name && slot.1 == f.value && slot.2 == f.linked_to && slot.3 == f.opened
+}
+
+/// Invariant 12, and the tick of the world.
+fn ticks_rise(w: &World) -> bool {
+    let evs = w.history().events();
+    let mut last = Tick(0);
+    let mut i = 0;
+    while i < evs.len() {
+        if evs[i].tick < last {
             return false;
         }
-        at = next;
+        last = evs[i].tick;
+        i += 1;
     }
+    w.tick >= last
+}
+
+/// Invariants 2 to 11.
+fn sound(w: &World) -> bool {
+    // Invariant 11.
+    let mut created: Ids<()> = Ids::new();
+    if !all_created_once(w, &mut created) {
+        return false;
+    }
+    all_entities_sound(w, &created)
+}
+
+fn all_created_once(w: &World, created: &mut Ids<()>) -> bool {
+    let evs = w.history().events();
+    let mut i = 0;
+    while i < evs.len() {
+        if !created_once(w, created, &evs[i]) {
+            return false;
+        }
+        i += 1;
+    }
+    true
+}
+
+fn all_entities_sound(w: &World, created: &Ids<()>) -> bool {
+    let ids = w.entity_ids();
+    let mut k = 0;
+    while k < ids.len() {
+        if !entity_sound(w, created, ids[k]) {
+            return false;
+        }
+        k += 1;
+    }
+    true
+}
+
+/// A second creation of a live entity lets one handle name two
+/// things.
+fn created_once(w: &World, created: &mut Ids<()>, ev: &Event) -> bool {
+    if let EventKind::EntityCreated { id, .. } = &ev.kind {
+        if created.contains(*id) && w.entity(*id).is_some() {
+            return false;
+        }
+        created.insert(*id, ());
+    }
+    true
+}
+
+fn entity_sound(w: &World, created: &Ids<()>, key: EntityId) -> bool {
+    let Some(e) = w.entity(key) else {
+        return false;
+    };
+    if !created.contains(e.id) {
+        return false;
+    }
+    // Invariant 5.
+    if !e.existence.sound() {
+        return false;
+    }
+    let mut i = 0;
+    while i < e.facts.len() {
+        if !fact_sound(w, e, i) {
+            return false;
+        }
+        i += 1;
+    }
+    // Invariant 8.
+    walk_is_finite(w, e.id)
+}
+
+fn fact_sound(w: &World, e: &Entity, i: usize) -> bool {
+    let f = &e.facts[i];
+    // Invariant 2.
+    let Some(rules) = w.vocabulary.rules_key(&f.name) else {
+        return false;
+    };
+    // Invariant 3.
+    !slot_before(&e.facts, i)
+        // Invariant 4.
+        && opened_inside(w, f)
+        // Invariant 10.
+        && value_fits(rules, f)
+        // Invariant 9.
+        && link_fits(w, e, rules, f)
+        // Invariants 6 and 7.
+        && counts_hold(w, e, rules, f)
+}
+
+fn opened_inside(w: &World, f: &Fact) -> bool {
+    (f.opened.0 as usize) < w.history().len()
+}
+
+fn value_fits(rules: &FactRules, f: &Fact) -> bool {
+    match (rules.shape(), f.value) {
+        (Shape::Number { band, .. }, Some(n)) => band.holds(n),
+        (Shape::Number { .. }, None) => false,
+        (Shape::Flag { .. }, Some(_)) => false,
+        (Shape::Flag { .. }, None) => true,
+    }
+}
+
+fn link_fits(w: &World, e: &Entity, rules: &FactRules, f: &Fact) -> bool {
+    match (rules.takes_target(), f.linked_to) {
+        (true, None) => false,
+        (false, Some(_)) => false,
+        (true, Some(target)) => {
+            if target == e.id {
+                return false;
+            }
+            let Some(other) = w.type_of(target) else {
+                return false;
+            };
+            rules.type_allowed(e.entity_type, other)
+        }
+        (false, None) => true,
+    }
+}
+
+fn counts_hold(w: &World, e: &Entity, rules: &FactRules, f: &Fact) -> bool {
+    let FactRules::Linked {
+        holders, targets, ..
+    } = rules
+    else {
+        return true;
+    };
+    holders_fit(w, *holders, f) && targets_fit(e, *targets, f)
+}
+
+fn holders_fit(w: &World, holders: Count, f: &Fact) -> bool {
+    match (holders.limit(), f.linked_to) {
+        (Some(limit), Some(target)) => holders_count(w, &f.name, target) <= usize::from(limit),
+        _ => true,
+    }
+}
+
+fn targets_fit(e: &Entity, targets: Count, f: &Fact) -> bool {
+    match targets.limit() {
+        Some(limit) => distinct_targets(&e.facts, &f.name) <= usize::from(limit),
+        None => true,
+    }
+}
+
+/// Does a fact before `i` sit in the slot of the fact at `i`?
+fn slot_before(facts: &[Fact], i: usize) -> bool {
+    let mut j = 0;
+    while j < i {
+        if facts[j].name == facts[i].name && facts[j].linked_to == facts[i].linked_to {
+            return true;
+        }
+        j += 1;
+    }
+    false
+}
+
+/// The number of entities that hold the name about the target.
+#[allow(clippy::ptr_arg)]
+fn holders_count(w: &World, name: &String, target: EntityId) -> usize {
+    let ids = w.entity_ids();
+    let mut n = 0;
+    let mut i = 0;
+    while i < ids.len() {
+        if holds_slot(w, ids[i], name, target) {
+            n += 1;
+        }
+        i += 1;
+    }
+    n
+}
+
+#[allow(clippy::ptr_arg)]
+fn holds_slot(w: &World, key: EntityId, name: &String, target: EntityId) -> bool {
+    let Some(e) = w.entity(key) else {
+        return false;
+    };
+    let mut i = 0;
+    while i < e.facts.len() {
+        if e.facts[i].name == *name && e.facts[i].linked_to == Some(target) {
+            return true;
+        }
+        i += 1;
+    }
+    false
+}
+
+/// The number of different targets among the facts of the name.
+#[allow(clippy::ptr_arg)]
+fn distinct_targets(facts: &[Fact], name: &String) -> usize {
+    let mut n = 0;
+    let mut i = 0;
+    while i < facts.len() {
+        if first_target(facts, name, i) {
+            n += 1;
+        }
+        i += 1;
+    }
+    n
+}
+
+/// Is the fact at `i` the first fact of the name with its target?
+#[allow(clippy::ptr_arg)]
+fn first_target(facts: &[Fact], name: &String, i: usize) -> bool {
+    if facts[i].name != *name || facts[i].linked_to.is_none() {
+        return false;
+    }
+    let mut j = 0;
+    while j < i {
+        if facts[j].name == *name && facts[j].linked_to == facts[i].linked_to {
+            return false;
+        }
+        j += 1;
+    }
+    true
+}
+
+/// Invariant 8. The walk up the chain from the entity ends. Each
+/// stop with a place is an entity of the world, so a chain with no
+/// ring ends within `len` hops. A chain still going after `len` hops
+/// meets a ring.
+fn walk_is_finite(w: &World, start: EntityId) -> bool {
+    let n = w.len();
+    let mut at = start;
+    let mut hops = 0;
+    while hops < n {
+        match up(w, at) {
+            None => return true,
+            Some(next) => at = next,
+        }
+        hops += 1;
+    }
+    up(w, at).is_none()
+}
+
+/// The place of the entity: the target of its first `located_in`
+/// fact, with its own loop.
+#[allow(clippy::question_mark)]
+fn up(w: &World, at: EntityId) -> Option<EntityId> {
+    let Some(row) = w.entity(at) else {
+        return None;
+    };
+    let mut i = 0;
+    while i < row.facts.len() {
+        if is_located_in(&row.facts[i].name) {
+            return row.facts[i].linked_to;
+        }
+        i += 1;
+    }
+    None
 }
