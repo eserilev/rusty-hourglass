@@ -141,20 +141,23 @@ def time.TimeSpan.ended (self : time.TimeSpan) : Result Bool := do
 def entity.Entity.gone (self : entity.Entity) : Result Bool := do
   time.TimeSpan.ended self.existence
 
-/-- [hourglass::fact::same_str]:
-    Source: 'src/fact.rs', lines 42:0-44:1 -/
-def fact.same_str (a : Str) (b : Str) : Result Bool := do
-  Str.Insts.CoreCmpPartialEqStr.eq a b
-
-/-- [hourglass::fact::LOCATED_IN]
-    Source: 'src/fact.rs', lines 32:0-32:42
-    Visibility: public -/
-@[global_simps, irreducible] def fact.LOCATED_IN : Str := toStr "located_in"
+/-- [hourglass::fact::LOCATED_IN_BYTES]
+    Source: 'src/fact.rs', lines 36:0-36:50 -/
+@[global_simps, irreducible]
+def fact.LOCATED_IN_BYTES : Array Std.U8 10#usize :=
+  Array.make 10#usize [
+    108#u8, 111#u8, 99#u8, 97#u8, 116#u8, 101#u8, 100#u8, 95#u8, 105#u8, 110#u8
+    ]
 
 /-- [hourglass::fact::is_located_in]:
-    Source: 'src/fact.rs', lines 36:0-38:1 -/
+    Source: 'src/fact.rs', lines 39:0-41:1 -/
 def fact.is_located_in («name» : Str) : Result Bool := do
-  fact.same_str «name» fact.LOCATED_IN
+  let s ← core.str.Str.as_bytes «name»
+  let s1 ←
+    core.array.Array.index (core.ops.index.IndexSlice
+      (core.slice.index.SliceIndexRangeFullSlice Std.U8)) fact.LOCATED_IN_BYTES
+      ()
+  core.slice.cmp.PartialEqSlice.eq core.cmp.PartialEqU8 s s1
 
 /-- [hourglass::entity::{hourglass::entity::Entity}::location]: loop 0:
     Source: 'src/entity.rs', lines 100:8-107:5
@@ -191,6 +194,11 @@ def entity.Entity.location
 def time.EntityId.Insts.CoreCmpPartialEqEntityId.eq
   (self : time.EntityId) (other : time.EntityId) : Result Bool := do
   ok (self = other)
+
+/-- [hourglass::fact::same_str]:
+    Source: 'src/fact.rs', lines 45:0-47:1 -/
+def fact.same_str (a : Str) (b : Str) : Result Bool := do
+  Str.Insts.CoreCmpPartialEqStr.eq a b
 
 /-- [hourglass::event::ends_slot]:
     Source: 'src/event.rs', lines 18:0-27:1 -/
@@ -371,7 +379,7 @@ def event.EventHistory.truncate
   else ok self
 
 /-- [hourglass::fact::{hourglass::fact::Band}::holds]:
-    Source: 'src/fact.rs', lines 61:4-63:5
+    Source: 'src/fact.rs', lines 64:4-66:5
     Visibility: public -/
 def fact.Band.holds (self : fact.Band) (n : Std.I64) : Result Bool := do
   if n >= self.min
@@ -379,13 +387,13 @@ def fact.Band.holds (self : fact.Band) (n : Std.I64) : Result Bool := do
   else ok false
 
 /-- [hourglass::fact::{hourglass::fact::Band}::empty]:
-    Source: 'src/fact.rs', lines 67:4-69:5
+    Source: 'src/fact.rs', lines 70:4-72:5
     Visibility: public -/
 def fact.Band.empty (self : fact.Band) : Result Bool := do
   ok (self.min > self.max)
 
 /-- [hourglass::fact::{hourglass::fact::Band}::clamp]:
-    Source: 'src/fact.rs', lines 74:4-82:5
+    Source: 'src/fact.rs', lines 77:4-85:5
     Visibility: public -/
 def fact.Band.clamp (self : fact.Band) (n : Std.I64) : Result Std.I64 := do
   if n < self.min
@@ -395,7 +403,7 @@ def fact.Band.clamp (self : fact.Band) (n : Std.I64) : Result Std.I64 := do
        else ok n
 
 /-- [hourglass::fact::{hourglass::fact::Band}::inside]:
-    Source: 'src/fact.rs', lines 86:4-88:5
+    Source: 'src/fact.rs', lines 89:4-91:5
     Visibility: public -/
 def fact.Band.inside (self : fact.Band) (other : fact.Band) : Result Bool := do
   if self.min >= other.min
@@ -403,7 +411,7 @@ def fact.Band.inside (self : fact.Band) (other : fact.Band) : Result Bool := do
   else ok false
 
 /-- [hourglass::fact::{hourglass::fact::Direction}::allows]:
-    Source: 'src/fact.rs', lines 116:4-122:5
+    Source: 'src/fact.rs', lines 119:4-125:5
     Visibility: public -/
 def fact.Direction.allows
   (self : fact.Direction) («from» : Std.I64) («to» : Std.I64) :
@@ -415,7 +423,7 @@ def fact.Direction.allows
   | fact.Direction.Free => ok true
 
 /-- [hourglass::fact::{hourglass::fact::Direction}::can_end]:
-    Source: 'src/fact.rs', lines 128:4-130:5
+    Source: 'src/fact.rs', lines 131:4-133:5
     Visibility: public -/
 def fact.Direction.can_end (self : fact.Direction) : Result Bool := do
   let b ←
@@ -426,7 +434,7 @@ def fact.Direction.can_end (self : fact.Direction) : Result Bool := do
   ok (¬ b)
 
 /-- [hourglass::fact::{hourglass::fact::Direction}::can_restart]:
-    Source: 'src/fact.rs', lines 136:4-138:5
+    Source: 'src/fact.rs', lines 139:4-141:5
     Visibility: public -/
 def fact.Direction.can_restart (self : fact.Direction) : Result Bool := do
   match self with
@@ -435,14 +443,14 @@ def fact.Direction.can_restart (self : fact.Direction) : Result Bool := do
   | fact.Direction.Free => ok true
 
 /-- [hourglass::fact::{impl core::clone::Clone for hourglass::fact::Shape}::clone]:
-    Source: 'src/fact.rs', lines 152:9-152:14
+    Source: 'src/fact.rs', lines 155:9-155:14
     Visibility: public -/
 def fact.Shape.Insts.CoreCloneClone.clone
   (self : fact.Shape) : Result fact.Shape := do
   ok self
 
 /-- [hourglass::fact::{hourglass::fact::Shape}::moving]:
-    Source: 'src/fact.rs', lines 180:4-185:5
+    Source: 'src/fact.rs', lines 183:4-188:5
     Visibility: public -/
 def fact.Shape.moving
   (self : fact.Shape) (direction : fact.Direction) : Result fact.Shape := do
@@ -451,7 +459,7 @@ def fact.Shape.moving
   | fact.Shape.Number band _ => ok (fact.Shape.Number band direction)
 
 /-- [hourglass::fact::{hourglass::fact::Shape}::direction]:
-    Source: 'src/fact.rs', lines 188:4-193:5
+    Source: 'src/fact.rs', lines 191:4-196:5
     Visibility: public -/
 def fact.Shape.direction (self : fact.Shape) : Result fact.Direction := do
   match self with
@@ -459,7 +467,7 @@ def fact.Shape.direction (self : fact.Shape) : Result fact.Direction := do
   | fact.Shape.Number _ direction => ok direction
 
 /-- [hourglass::fact::{hourglass::fact::Shape}::band]:
-    Source: 'src/fact.rs', lines 196:4-201:5
+    Source: 'src/fact.rs', lines 199:4-204:5
     Visibility: public -/
 def fact.Shape.band (self : fact.Shape) : Result (Option fact.Band) := do
   match self with
@@ -467,7 +475,7 @@ def fact.Shape.band (self : fact.Shape) : Result (Option fact.Band) := do
   | fact.Shape.Number band _ => ok (some band)
 
 /-- [hourglass::fact::{hourglass::fact::Shape}::numeric]:
-    Source: 'src/fact.rs', lines 204:4-206:5
+    Source: 'src/fact.rs', lines 207:4-209:5
     Visibility: public -/
 def fact.Shape.numeric (self : fact.Shape) : Result Bool := do
   match self with
@@ -475,14 +483,14 @@ def fact.Shape.numeric (self : fact.Shape) : Result Bool := do
   | fact.Shape.Number _ _ => ok true
 
 /-- [hourglass::fact::{impl core::clone::Clone for hourglass::fact::Count}::clone]:
-    Source: 'src/fact.rs', lines 218:9-218:14
+    Source: 'src/fact.rs', lines 221:9-221:14
     Visibility: public -/
 def fact.Count.Insts.CoreCloneClone.clone
   (self : fact.Count) : Result fact.Count := do
   ok self
 
 /-- [hourglass::fact::{impl core::cmp::PartialEq<hourglass::fact::Count> for hourglass::fact::Count}::eq]:
-    Source: 'src/fact.rs', lines 218:29-218:38
+    Source: 'src/fact.rs', lines 221:29-221:38
     Visibility: public -/
 def fact.Count.Insts.CoreCmpPartialEqCount.eq
   (self : fact.Count) (other : fact.Count) : Result Bool := do
@@ -502,7 +510,7 @@ def fact.Count.Insts.CoreCmpPartialEqCount.eq
   else ok false
 
 /-- [hourglass::fact::{hourglass::fact::Count}::limit]:
-    Source: 'src/fact.rs', lines 228:4-234:5
+    Source: 'src/fact.rs', lines 231:4-237:5
     Visibility: public -/
 def fact.Count.limit (self : fact.Count) : Result (Option Std.U16) := do
   match self with
@@ -511,7 +519,7 @@ def fact.Count.limit (self : fact.Count) : Result (Option Std.U16) := do
   | fact.Count.AtMost n => ok (some n)
 
 /-- [hourglass::fact::{hourglass::fact::Count}::is_single]:
-    Source: 'src/fact.rs', lines 240:4-242:5
+    Source: 'src/fact.rs', lines 243:4-245:5
     Visibility: public -/
 def fact.Count.is_single (self : fact.Count) : Result Bool := do
   let o ← fact.Count.limit self
@@ -519,7 +527,7 @@ def fact.Count.is_single (self : fact.Count) : Result Bool := do
     (some 1#u16)
 
 /-- [hourglass::fact::{impl core::clone::Clone for hourglass::fact::FactRules}::clone]:
-    Source: 'src/fact.rs', lines 247:9-247:14
+    Source: 'src/fact.rs', lines 250:9-250:14
     Visibility: public -/
 def fact.FactRules.Insts.CoreCloneClone.clone
   (self : fact.FactRules) : Result fact.FactRules := do
@@ -539,14 +547,14 @@ def fact.FactRules.Insts.CoreCloneClone.clone
     ok (fact.FactRules.Linked s c c1 bm)
 
 /-- Trait implementation: [hourglass::fact::{impl core::clone::Clone for hourglass::fact::FactRules}]
-    Source: 'src/fact.rs', lines 247:9-247:14 -/
+    Source: 'src/fact.rs', lines 250:9-250:14 -/
 @[reducible]
 def fact.FactRules.Insts.CoreCloneClone : core.clone.Clone fact.FactRules := {
   clone := fact.FactRules.Insts.CoreCloneClone.clone
 }
 
 /-- [hourglass::fact::{hourglass::fact::FactRules}::shape]:
-    Source: 'src/fact.rs', lines 291:4-296:5
+    Source: 'src/fact.rs', lines 294:4-299:5
     Visibility: public -/
 def fact.FactRules.shape (self : fact.FactRules) : Result fact.Shape := do
   match self with
@@ -554,7 +562,7 @@ def fact.FactRules.shape (self : fact.FactRules) : Result fact.Shape := do
   | fact.FactRules.Linked shape _ _ _ => ok shape
 
 /-- [hourglass::fact::{hourglass::fact::FactRules}::takes_target]:
-    Source: 'src/fact.rs', lines 298:4-300:5
+    Source: 'src/fact.rs', lines 301:4-303:5
     Visibility: public -/
 def fact.FactRules.takes_target (self : fact.FactRules) : Result Bool := do
   match self with
@@ -562,7 +570,7 @@ def fact.FactRules.takes_target (self : fact.FactRules) : Result Bool := do
   | fact.FactRules.Linked _ _ _ _ => ok true
 
 /-- [hourglass::fact::holds_type]: loop 0:
-    Source: 'src/fact.rs', lines 475:4-482:1 -/
+    Source: 'src/fact.rs', lines 478:4-485:1 -/
 @[rust_loop]
 def fact.holds_type_loop
   (list : Slice entity.EntityType) (t : entity.EntityType) (i : Std.Usize) :
@@ -581,14 +589,14 @@ def fact.holds_type_loop
 partial_fixpoint
 
 /-- [hourglass::fact::holds_type]:
-    Source: 'src/fact.rs', lines 473:0-482:1 -/
+    Source: 'src/fact.rs', lines 476:0-485:1 -/
 @[reducible]
 def fact.holds_type
   (list : Slice entity.EntityType) (t : entity.EntityType) : Result Bool := do
   fact.holds_type_loop list t 0#usize
 
 /-- [hourglass::fact::{hourglass::fact::FactRules}::type_allowed]:
-    Source: 'src/fact.rs', lines 304:4-317:5
+    Source: 'src/fact.rs', lines 307:4-320:5
     Visibility: public -/
 def fact.FactRules.type_allowed
   (self : fact.FactRules) (holder : entity.EntityType)
@@ -616,7 +624,7 @@ def fact.FactRules.type_allowed
                      fact.holds_type s target
 
 /-- [hourglass::fact::{impl core::clone::Clone for hourglass::fact::FactVocabulary}::clone]:
-    Source: 'src/fact.rs', lines 379:9-379:14
+    Source: 'src/fact.rs', lines 382:9-382:14
     Visibility: public -/
 def fact.FactVocabulary.Insts.CoreCloneClone.clone
   (self : fact.FactVocabulary) : Result fact.FactVocabulary := do
@@ -627,7 +635,7 @@ def fact.FactVocabulary.Insts.CoreCloneClone.clone
   ok { version := i, names := n }
 
 /-- [hourglass::fact::{hourglass::fact::FactVocabulary}::rules_key]:
-    Source: 'src/fact.rs', lines 413:4-415:5 -/
+    Source: 'src/fact.rs', lines 416:4-418:5 -/
 def fact.FactVocabulary.rules_key
   (self : fact.FactVocabulary) («name» : String) :
   Result (Option fact.FactRules)

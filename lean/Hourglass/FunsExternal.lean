@@ -166,6 +166,11 @@ def alloc.string.String.Insts.CoreOpsDerefDerefStr.deref (s : String) : Result S
     (fun x => UScalar.ofNatCore x.toNat (by have := x.toNat_lt; simpa using this))
   if h : l.length ≤ Usize.max then ok (Slice.from l h) else fail .panic
 
+/-- `str::as_bytes`: the model of a `str` is its bytes already. -/
+@[rust_fun "core::str::{str}::as_bytes"]
+def core.str.Str.as_bytes (s : Str) : Result (Slice U8) :=
+  ok s
+
 /-- `str == str` compares the bytes. -/
 @[rust_fun "core::str::traits::{core::cmp::PartialEq<str, str>}::eq"]
 def Str.Insts.CoreCmpPartialEqStr.eq (a b : Str) : Result Bool :=

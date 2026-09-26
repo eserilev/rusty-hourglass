@@ -31,10 +31,13 @@ use std::collections::BTreeMap;
 /// never types it and never misspells it (spec decision 32).
 pub const LOCATED_IN: &str = "located_in";
 
-/// Is this name `located_in`? The compare is on two `str` values,
-/// because Aeneas cannot translate a compare of `String` with `&str`.
+/// The bytes of `LOCATED_IN`. The verified code compares these, because
+/// Aeneas writes a `&str` constant with a proof by native code.
+const LOCATED_IN_BYTES: [u8; 10] = *b"located_in";
+
+/// Is this name `located_in`?
 pub(crate) fn is_located_in(name: &str) -> bool {
-    same_str(name, LOCATED_IN)
+    *name.as_bytes() == LOCATED_IN_BYTES[..]
 }
 
 /// Two `str` values with the same bytes. The verified code compares a

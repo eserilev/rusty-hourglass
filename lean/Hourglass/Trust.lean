@@ -95,24 +95,15 @@ open hourglass
 #guard_msgs in
 #print axioms rewind_is_exact
 
-/-- info: 'hourglass.propose_ok' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.propose_ok' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms propose_ok
 
-/-- info: 'hourglass.propose_err' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.propose_err' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms propose_err
 
-/-- info: 'hourglass.reach_propose' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.reach_propose' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms reach_propose
 
@@ -140,10 +131,7 @@ open hourglass
 #guard_msgs in
 #print axioms every_world_one_target
 
-/-- info: 'hourglass.start_clean' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.start_clean' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms start_clean
 
@@ -151,10 +139,7 @@ open hourglass
 #guard_msgs in
 #print axioms update_clean
 
-/-- info: 'hourglass.validate_clean' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.validate_clean' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms validate_clean
 
@@ -162,24 +147,15 @@ open hourglass
 #guard_msgs in
 #print axioms apply_in_band
 
-/-- info: 'hourglass.reachP_reach' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.reachP_reach' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms reachP_reach
 
-/-- info: 'hourglass.every_proposed_world_in_band' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.every_proposed_world_in_band' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms every_proposed_world_in_band
 
-/-- info: 'hourglass.start_dir' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.start_dir' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms start_dir
 
@@ -191,10 +167,7 @@ open hourglass
 #guard_msgs in
 #print axioms end_dir
 
-/-- info: 'hourglass.validate_dir' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.validate_dir' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms validate_dir
 
@@ -202,10 +175,7 @@ open hourglass
 #guard_msgs in
 #print axioms apply_up
 
-/-- info: 'hourglass.up_never_falls' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.up_never_falls' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms up_never_falls
 
@@ -217,10 +187,7 @@ open hourglass
 #guard_msgs in
 #print axioms apply_targets
 
-/-- info: 'hourglass.every_proposed_world_targets' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.every_proposed_world_targets' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms every_proposed_world_targets
 
@@ -232,17 +199,11 @@ open hourglass
 #guard_msgs in
 #print axioms apply_holders
 
-/-- info: 'hourglass.every_proposed_world_holders' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.every_proposed_world_holders' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms every_proposed_world_holders
 
-/-- info: 'hourglass.loc_test' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.loc_test' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms loc_test
 
@@ -250,10 +211,7 @@ open hourglass
 #guard_msgs in
 #print axioms walk_le_size
 
-/-- info: 'hourglass.start_cycle_clean' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.start_cycle_clean' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms start_cycle_clean
 
@@ -265,16 +223,10 @@ open hourglass
 #guard_msgs in
 #print axioms apply_acyc
 
-/-- info: 'hourglass.every_proposed_world_acyclic' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.every_proposed_world_acyclic' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms every_proposed_world_acyclic
 
-/-- info: 'hourglass.no_place_inside_itself' depends on axioms: [propext,
- Classical.choice,
- Quot.sound,
- hourglass.fact.LOCATED_IN._native.decide.ax_1✝] -/
+/-- info: 'hourglass.no_place_inside_itself' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms no_place_inside_itself

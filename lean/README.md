@@ -184,12 +184,8 @@ other rules for the name.
 4. **The three standard axioms of Lean.** `Hourglass/Trust.lean`
    pins the axioms of each theorem with `#guard_msgs`. A `sorry` or
    a new axiom fails the build. The model files hold definitions
-   only, and no law depends on an axiom of the crate.
-5. **One native check.** Aeneas writes the constant `LOCATED_IN`
-   with `toStr`, and `toStr` proves that the string fits a `u32`
-   length with `decide +native`. So the pins of the laws that read
-   `validate` name `fact.LOCATED_IN._native.decide.ax_1`. It trusts the Lean
-   compiler to count the ten bytes of `located_in`.
+   only, and no law depends on an axiom of the crate. Every pin
+   names exactly `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## How to run
 
@@ -305,9 +301,11 @@ chain of that length unsound. The test
 
 The new walk has no cap and no set. It walks at most `len` hops. In a
 world with no ring, a walk that meets the entity meets it within
-`len` hops (`walk_le_size`). `Entity::location` is an index loop, and
-`is_located_in` compares two `str` values, because Aeneas cannot
-translate a compare of `String` with `&str`.
+`len` hops (`walk_le_size`). `Entity::location` is an index loop.
+`is_located_in` compares the bytes of the name with the byte array
+`LOCATED_IN_BYTES`. Aeneas writes a `&str` constant with a proof by
+native code, and a byte array needs no such proof. The kernel checks
+that the array holds the bytes of `located_in` (`located_bytes`).
 
 ### Rung 8: the last queries (BUILT)
 

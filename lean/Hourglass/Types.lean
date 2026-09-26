@@ -73,7 +73,7 @@ def time.EntityId := Std.U32
 def time.EventId := Std.U64
 
 /-- [hourglass::fact::Fact]
-    Source: 'src/fact.rs', lines 354:0-364:1
+    Source: 'src/fact.rs', lines 357:0-367:1
     Visibility: public -/
 structure fact.Fact where
   «name» : String
@@ -136,14 +136,14 @@ structure event.Event where
 def event.EventHistory := alloc.vec.Vec event.Event
 
 /-- [hourglass::fact::Band]
-    Source: 'src/fact.rs', lines 49:0-52:1
+    Source: 'src/fact.rs', lines 52:0-55:1
     Visibility: public -/
 structure fact.Band where
   min : Std.I64
   max : Std.I64
 
 /-- [hourglass::fact::Direction]
-    Source: 'src/fact.rs', lines 102:0-111:1
+    Source: 'src/fact.rs', lines 105:0-114:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.Direction where
@@ -152,7 +152,7 @@ inductive fact.Direction where
 | Free : fact.Direction
 
 /-- [hourglass::fact::Shape]
-    Source: 'src/fact.rs', lines 153:0-160:1
+    Source: 'src/fact.rs', lines 156:0-163:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.Shape where
@@ -160,7 +160,7 @@ inductive fact.Shape where
 | Number : fact.Band → fact.Direction → fact.Shape
 
 /-- [hourglass::fact::Count]
-    Source: 'src/fact.rs', lines 219:0-223:1
+    Source: 'src/fact.rs', lines 222:0-226:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.Count where
@@ -169,7 +169,7 @@ inductive fact.Count where
 | AtMost : Std.U16 → fact.Count
 
 /-- [hourglass::fact::FactRules]
-    Source: 'src/fact.rs', lines 248:0-262:1
+    Source: 'src/fact.rs', lines 251:0-265:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.FactRules where
@@ -183,7 +183,7 @@ inductive fact.FactRules where
   fact.FactRules
 
 /-- [hourglass::fact::FactVocabulary]
-    Source: 'src/fact.rs', lines 380:0-383:1
+    Source: 'src/fact.rs', lines 383:0-386:1
     Visibility: public -/
 structure fact.FactVocabulary where
   version : Std.U32

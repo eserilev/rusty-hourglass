@@ -41,6 +41,42 @@ theorem bytes_eq_iff (s t : String) :
     simpa [ba_toList] using h1
   · rintro rfl; rfl
 
+theorem allM_eq {f : U8 × U8 → Result Bool} (hf : ∀ p, f p = ok (decide (p.1 = p.2))) :
+    ∀ (l0 l1 : List U8), l0.length = l1.length →
+      List.allM f (List.zip l0 l1) = ok (decide (l0 = l1))
+  | [], [], _ => rfl
+  | x :: xs, y :: ys, h => by
+    have ih := allM_eq hf xs ys (by simpa using h)
+    simp only [List.zip_cons_cons, List.allM_cons, hf, bind_tc_ok, List.cons.injEq]
+    by_cases hxy : x = y
+    · simp [hxy, ih]
+    · simp [hxy]; rfl
+
+/-- `[u8] == [u8]` is list equality. -/
+theorem slice_eq_u8 (s0 s1 : Slice U8) :
+    core.slice.cmp.PartialEqSlice.eq core.cmp.PartialEqU8 s0 s1 = ok (decide (s0.val = s1.val)) := by
+  unfold core.slice.cmp.PartialEqSlice.eq
+  split
+  · rename_i hl
+    refine allM_eq (fun p => ?_) s0.val s1.val (by simpa using hl)
+    simp only [core.cmp.PartialEqU8, liftFun2, core.cmp.impls.PartialEqU8.ne, bind_tc_ok]
+    by_cases h : p.1 = p.2
+    · simp [h]
+    · have : p.1.val ≠ p.2.val := fun e => h (UScalar.eq_of_val_eq e)
+      simp [h, this]
+  · rename_i hl
+    have : s0.val ≠ s1.val := fun e => hl (by simp [Slice.length, e])
+    simp [this]
+
+/-- The bytes of `located_in`, computed by the kernel. -/
+theorem located_bytes :
+    (fact.LOCATED_IN_BYTES.val.map (fun x : U8 => x.val)) =
+      "located_in".toByteArray.toList.map (fun x : UInt8 => x.toNat) := by
+  rw [ba_toList]
+  unfold fact.LOCATED_IN_BYTES
+  rw [Array.make_val]
+  decide
+
 /-- The gate and `location` test the name through its bytes. The test
     says `true` exactly for `located_in`. -/
 theorem loc_test {s : String} {str : Str} {b : Bool}
@@ -51,23 +87,25 @@ theorem loc_test {s : String} {str : Str} {b : Bool}
   split at h1
   · simp only [ok.injEq] at h1
     subst h1
-    simp only [fact.is_located_in, fact.same_str, Str.Insts.CoreCmpPartialEqStr.eq, ok.injEq] at h2
+    simp only [fact.is_located_in, core.str.Str.as_bytes, core.array.Array.index,
+      core.ops.index.IndexSlice, core.slice.index.Slice.index,
+      core.slice.index.SliceIndexRangeFullSlice, core.slice.index.SliceIndexRangeFullSlice.index,
+      bind_tc_ok, slice_eq_u8, ok.injEq] at h2
     subst h2
-    simp only [locB, fact.LOCATED_IN, toStr]
+    simp only [locB]
     apply decide_eq_decide.2
-    refine (Slice.eq_iff (α := U8) _ _).trans ?_
-    rw [Slice.from_val, Slice.from_val, ← bytes_eq_iff]
+    rw [Slice.from_val, Array.to_slice, Slice.from_val, ← bytes_eq_iff, ← located_bytes]
     constructor
     · intro h
       have := congrArg (List.map (fun x : U8 => x.val)) h
       simp only [List.map_map, Function.comp_def] at this
       exact this
     · intro h
-      rw [bytes_eq_iff] at h
-      subst h
-      exact List.map_congr_left (fun x _ => rfl)
+      have hinj : Function.Injective (fun x : U8 => x.val) :=
+        fun a c hac => UScalar.eq_of_val_eq hac
+      apply List.map_injective_iff.2 hinj
+      simpa [List.map_map, Function.comp_def] using h
   · simp at h1
-
 
 /-! ## Where an entity sits -/
 
