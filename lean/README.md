@@ -117,6 +117,11 @@ The tools are pinned to Aeneas commit `fd27c97` (see
    `AENEAS=<aeneas dir> lean/extract.sh`
 5. Check the proofs: `cd lean && lake exe cache get && lake build`.
 
+CI (`.github/workflows/ci.yml`) runs all of this on each push. Its
+`extract` job fails when the committed Lean differs from the Lean
+that Aeneas makes from the current Rust. The extraction also fails
+when an item of the Aeneas template has no entry in the model.
+
 The extraction writes `Hourglass/Types.lean` and
 `Hourglass/Funs.lean`. Never edit these two files by hand. The
 extraction never overwrites `Hourglass/FunsExternal.lean`. When

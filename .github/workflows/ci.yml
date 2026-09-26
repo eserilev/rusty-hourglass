@@ -67,11 +67,14 @@ jobs:
           opam install -y calendar core_unix domainslib easy_logging menhir \
             ocamlformat.0.27.0 ocamlgraph odoc ppx_deriving ppx_deriving_yojson \
             progress unionFind visitors yojson zarith
+          # setup-ocaml makes a local switch in the repo directory, so
+          # load its environment before the cd.
+          eval "$(opam env)"
           git clone https://github.com/AeneasVerif/aeneas.git ~/aeneas
           cd ~/aeneas
           git checkout "${{ steps.pin.outputs.rev }}"
-          opam exec -- make setup-charon
-          opam exec -- make
+          make setup-charon
+          make
       - name: Install the Charon toolchain
         run: |
           channel=$(sed -n 's/^channel = "\(.*\)"/\1/p' ~/aeneas/charon/rust-toolchain)
