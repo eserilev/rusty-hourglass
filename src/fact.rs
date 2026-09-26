@@ -22,6 +22,7 @@
 //! declare one.
 
 use crate::entity::EntityType;
+use crate::names::Names;
 use crate::time::{EntityId, EventId};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -366,7 +367,7 @@ impl Fact {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FactVocabulary {
     pub version: u32,
-    names: BTreeMap<String, FactRules>,
+    names: Names<FactRules>,
 }
 
 impl Default for FactVocabulary {
@@ -379,7 +380,7 @@ impl FactVocabulary {
     /// A new vocabulary already holds `located_in`, so every world
     /// can say where a thing is (spec decision 32).
     pub fn new(version: u32) -> Self {
-        let mut names = BTreeMap::new();
+        let mut names = Names::new();
         names.insert(LOCATED_IN.to_string(), located_in_rules());
         FactVocabulary { version, names }
     }
@@ -395,8 +396,14 @@ impl FactVocabulary {
         self.names.get(name)
     }
 
+    /// `rules`, for the verified code (see `names.rs`).
+    #[allow(clippy::ptr_arg)]
+    pub(crate) fn rules_key(&self, name: &String) -> Option<&FactRules> {
+        self.names.get_key(name)
+    }
+
     pub fn holds(&self, name: &str) -> bool {
-        self.names.contains_key(name)
+        self.names.contains(name)
     }
 
     pub fn len(&self) -> usize {

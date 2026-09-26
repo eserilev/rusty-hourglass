@@ -9,6 +9,7 @@
 module
 public import Aeneas
 public import Hourglass.Types
+public import Std.Data.ExtTreeMap
 @[expose] public section
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
@@ -40,3 +41,48 @@ def time.Tick.Insts.CoreCmpPartialOrdTick.lt
 def time.Tick.Insts.CoreCmpPartialOrdTick.ge
   (a b : time.Tick) : Result Bool :=
   ok (a >= b)
+
+/-- `String::clone` gives an equal string. -/
+@[rust_fun "alloc::string::{core::clone::Clone<alloc::string::String>}::clone"]
+def alloc.string.String.Insts.CoreCloneClone.clone (s : String) : Result String :=
+  ok s
+
+/-- `Vec::is_empty` is `len() == 0`. -/
+@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::is_empty"]
+def alloc.vec.Vec.is_empty {T : Type} (_A : Type) (v : alloc.vec.Vec T) : Result Bool :=
+  ok v.val.isEmpty
+
+/-! ## `Names<V>`, the map from a name to a value
+
+Each operation is the operation of the same name on `ExtTreeMap`
+(see TypesExternal.lean). The tests in `src/names.rs` check the laws
+of each one against the Rust code. -/
+
+/-- `Names::new` is the empty map. -/
+def names.Names.new (V : Type) : Result (names.Names V) :=
+  ok ∅
+
+/-- `Names::get_key` is the value of the name, if the map holds it. -/
+def names.Names.get_key {V : Type} (m : names.Names V) (k : String) :
+    Result (Option V) :=
+  ok m[k]?
+
+/-- `Names::insert` adds the name, or replaces its value. -/
+def names.Names.insert {V : Type} (m : names.Names V) (k : String) (v : V) :
+    Result (names.Names V) :=
+  ok (Std.ExtTreeMap.insert m k v)
+
+/-- `Names::remove_key` takes the name out. A name the map does not
+    hold changes nothing. -/
+def names.Names.remove_key {V : Type} (m : names.Names V) (k : String) :
+    Result (names.Names V) :=
+  ok (Std.ExtTreeMap.erase m k)
+
+/-- `Names::keys` gives every name one time, in ascending order. A
+    `Vec` holds at most `usize::MAX` items. A map that large does not
+    fit in memory, so the model panics there. -/
+def names.Names.keys {V : Type} (m : names.Names V) :
+    Result (alloc.vec.Vec String) :=
+  if h : (Std.ExtTreeMap.keys m).length ≤ Usize.max then
+    ok (alloc.vec.Vec.from (Std.ExtTreeMap.keys m) h)
+  else fail .panic

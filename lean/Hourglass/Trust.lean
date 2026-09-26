@@ -1,6 +1,7 @@
 -- The trust check. Each law depends only on the three standard axioms
 -- of Lean. A `sorry` or a new axiom changes the output, and the build fails.
 import Hourglass.Laws
+import Hourglass.Merge
 
 open hourglass
 
@@ -47,4 +48,24 @@ open hourglass
 /-- info: 'hourglass.span_law' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms span_law
+
+/-- info: 'hourglass.merge_spec' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms merge_spec
+
+/-- info: 'hourglass.check_spec' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms check_spec
+
+/-- info: 'hourglass.merge_comm' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms merge_comm
+
+/-- info: 'hourglass.merge_self' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms merge_self
+
+/-- info: 'hourglass.merge_empty' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms merge_empty
 

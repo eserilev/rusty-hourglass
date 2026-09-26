@@ -25,7 +25,7 @@ noncomputable section
 namespace hourglass
 
 /-- [hourglass::fact::{hourglass::fact::Band}::holds]:
-    Source: 'src/fact.rs', lines 48:4-50:5
+    Source: 'src/fact.rs', lines 49:4-51:5
     Visibility: public -/
 def fact.Band.holds (self : fact.Band) (n : Std.I64) : Result Bool := do
   if n >= self.min
@@ -33,13 +33,13 @@ def fact.Band.holds (self : fact.Band) (n : Std.I64) : Result Bool := do
   else ok false
 
 /-- [hourglass::fact::{hourglass::fact::Band}::empty]:
-    Source: 'src/fact.rs', lines 54:4-56:5
+    Source: 'src/fact.rs', lines 55:4-57:5
     Visibility: public -/
 def fact.Band.empty (self : fact.Band) : Result Bool := do
   ok (self.min > self.max)
 
 /-- [hourglass::fact::{hourglass::fact::Band}::clamp]:
-    Source: 'src/fact.rs', lines 61:4-69:5
+    Source: 'src/fact.rs', lines 62:4-70:5
     Visibility: public -/
 def fact.Band.clamp (self : fact.Band) (n : Std.I64) : Result Std.I64 := do
   if n < self.min
@@ -49,7 +49,7 @@ def fact.Band.clamp (self : fact.Band) (n : Std.I64) : Result Std.I64 := do
        else ok n
 
 /-- [hourglass::fact::{hourglass::fact::Band}::inside]:
-    Source: 'src/fact.rs', lines 73:4-75:5
+    Source: 'src/fact.rs', lines 74:4-76:5
     Visibility: public -/
 def fact.Band.inside (self : fact.Band) (other : fact.Band) : Result Bool := do
   if self.min >= other.min
@@ -57,7 +57,7 @@ def fact.Band.inside (self : fact.Band) (other : fact.Band) : Result Bool := do
   else ok false
 
 /-- [hourglass::fact::{hourglass::fact::Direction}::allows]:
-    Source: 'src/fact.rs', lines 103:4-109:5
+    Source: 'src/fact.rs', lines 104:4-110:5
     Visibility: public -/
 def fact.Direction.allows
   (self : fact.Direction) («from» : Std.I64) («to» : Std.I64) :
@@ -69,7 +69,7 @@ def fact.Direction.allows
   | fact.Direction.Free => ok true
 
 /-- [hourglass::fact::{hourglass::fact::Direction}::can_end]:
-    Source: 'src/fact.rs', lines 115:4-117:5
+    Source: 'src/fact.rs', lines 116:4-118:5
     Visibility: public -/
 def fact.Direction.can_end (self : fact.Direction) : Result Bool := do
   let b ←
@@ -80,7 +80,7 @@ def fact.Direction.can_end (self : fact.Direction) : Result Bool := do
   ok (¬ b)
 
 /-- [hourglass::fact::{hourglass::fact::Direction}::can_restart]:
-    Source: 'src/fact.rs', lines 123:4-125:5
+    Source: 'src/fact.rs', lines 124:4-126:5
     Visibility: public -/
 def fact.Direction.can_restart (self : fact.Direction) : Result Bool := do
   match self with
@@ -89,7 +89,7 @@ def fact.Direction.can_restart (self : fact.Direction) : Result Bool := do
   | fact.Direction.Free => ok true
 
 /-- [hourglass::fact::{hourglass::fact::Shape}::moving]:
-    Source: 'src/fact.rs', lines 167:4-172:5
+    Source: 'src/fact.rs', lines 168:4-173:5
     Visibility: public -/
 def fact.Shape.moving
   (self : fact.Shape) (direction : fact.Direction) : Result fact.Shape := do
@@ -98,7 +98,7 @@ def fact.Shape.moving
   | fact.Shape.Number band _ => ok (fact.Shape.Number band direction)
 
 /-- [hourglass::fact::{hourglass::fact::Shape}::direction]:
-    Source: 'src/fact.rs', lines 175:4-180:5
+    Source: 'src/fact.rs', lines 176:4-181:5
     Visibility: public -/
 def fact.Shape.direction (self : fact.Shape) : Result fact.Direction := do
   match self with
@@ -106,7 +106,7 @@ def fact.Shape.direction (self : fact.Shape) : Result fact.Direction := do
   | fact.Shape.Number _ direction => ok direction
 
 /-- [hourglass::fact::{hourglass::fact::Shape}::band]:
-    Source: 'src/fact.rs', lines 183:4-188:5
+    Source: 'src/fact.rs', lines 184:4-189:5
     Visibility: public -/
 def fact.Shape.band (self : fact.Shape) : Result (Option fact.Band) := do
   match self with
@@ -114,7 +114,7 @@ def fact.Shape.band (self : fact.Shape) : Result (Option fact.Band) := do
   | fact.Shape.Number band _ => ok (some band)
 
 /-- [hourglass::fact::{hourglass::fact::Shape}::numeric]:
-    Source: 'src/fact.rs', lines 191:4-193:5
+    Source: 'src/fact.rs', lines 192:4-194:5
     Visibility: public -/
 def fact.Shape.numeric (self : fact.Shape) : Result Bool := do
   match self with
@@ -122,7 +122,7 @@ def fact.Shape.numeric (self : fact.Shape) : Result Bool := do
   | fact.Shape.Number _ _ => ok true
 
 /-- [hourglass::fact::{hourglass::fact::Count}::limit]:
-    Source: 'src/fact.rs', lines 215:4-221:5
+    Source: 'src/fact.rs', lines 216:4-222:5
     Visibility: public -/
 def fact.Count.limit (self : fact.Count) : Result (Option Std.U16) := do
   match self with
@@ -131,15 +131,39 @@ def fact.Count.limit (self : fact.Count) : Result (Option Std.U16) := do
   | fact.Count.AtMost n => ok (some n)
 
 /-- [hourglass::fact::{hourglass::fact::Count}::is_single]:
-    Source: 'src/fact.rs', lines 227:4-229:5
+    Source: 'src/fact.rs', lines 228:4-230:5
     Visibility: public -/
 def fact.Count.is_single (self : fact.Count) : Result Bool := do
   let o ← fact.Count.limit self
   core.option.Option.Insts.CoreCmpPartialEqOption.eq core.cmp.PartialEqU16 o
     (some 1#u16)
 
+/-- [hourglass::fact::{hourglass::fact::FactRules}::shape]:
+    Source: 'src/fact.rs', lines 279:4-284:5
+    Visibility: public -/
+def fact.FactRules.shape (self : fact.FactRules) : Result fact.Shape := do
+  match self with
+  | fact.FactRules.Solo shape => ok shape
+  | fact.FactRules.Linked shape _ _ _ => ok shape
+
+/-- [hourglass::fact::{hourglass::fact::FactRules}::takes_target]:
+    Source: 'src/fact.rs', lines 286:4-288:5
+    Visibility: public -/
+def fact.FactRules.takes_target (self : fact.FactRules) : Result Bool := do
+  match self with
+  | fact.FactRules.Solo _ => ok false
+  | fact.FactRules.Linked _ _ _ _ => ok true
+
+/-- [hourglass::fact::{hourglass::fact::FactVocabulary}::rules_key]:
+    Source: 'src/fact.rs', lines 401:4-403:5 -/
+def fact.FactVocabulary.rules_key
+  (self : fact.FactVocabulary) («name» : String) :
+  Result (Option fact.FactRules)
+  := do
+  names.Names.get_key self.names «name»
+
 /-- [hourglass::memory::{hourglass::memory::Value}::present]:
-    Source: 'src/memory.rs', lines 64:4-66:5
+    Source: 'src/memory.rs', lines 65:4-67:5
     Visibility: public -/
 def memory.Value.present (self : memory.Value) : Result Bool := do
   let b ←
@@ -150,8 +174,44 @@ def memory.Value.present (self : memory.Value) : Result Bool := do
     | memory.Value.Number _ => ok false
   ok (¬ b)
 
+/-- [hourglass::memory::{hourglass::memory::Record}::new]:
+    Source: 'src/memory.rs', lines 103:4-105:5
+    Visibility: public -/
+def memory.Record.new : Result memory.Record := do
+  let n ← names.Names.new memory.Value
+  ok n
+
+/-- [hourglass::memory::{hourglass::memory::Record}::value]:
+    Source: 'src/memory.rs', lines 109:4-120:5 -/
+def memory.Record.value
+  (self : memory.Record) («name» : String) :
+  Result (Option memory.Value)
+  := do
+  let o ← names.Names.get_key self «name»
+  match o with
+  | none => ok none
+  | some v => let b ← memory.Value.present v
+              if b
+              then ok o
+              else ok none
+
+/-- [hourglass::memory::{hourglass::memory::Record}::put]:
+    Source: 'src/memory.rs', lines 124:4-130:5 -/
+def memory.Record.put
+  (self : memory.Record) («name» : String) (value : memory.Value) :
+  Result memory.Record
+  := do
+  let b ← memory.Value.present value
+  if b
+  then
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+    let n ← names.Names.insert self s value
+    ok n
+  else let n ← names.Names.remove_key self «name»
+       ok n
+
 /-- [hourglass::memory::{hourglass::memory::Join}::of]:
-    Source: 'src/memory.rs', lines 159:4-169:5
+    Source: 'src/memory.rs', lines 187:4-197:5
     Visibility: public -/
 def memory.Join.of
   (self : memory.Join) (a : memory.Value) (b : memory.Value) :
@@ -177,6 +237,203 @@ def memory.Join.of
         let i ← lift (core.cmp.impls.OrdI64.min x y)
         ok (memory.Value.Number i)
   | memory.Join.Either => ok (memory.Value.Flag true)
+
+/-- [hourglass::memory::join_of]:
+    Source: 'src/memory.rs', lines 201:0-222:1
+    Visibility: public -/
+def memory.join_of
+  (rules : fact.FactRules) :
+  Result (core.result.Result memory.Join reject.Unmergeable)
+  := do
+  let b ← fact.FactRules.takes_target rules
+  if b
+  then ok (core.result.Result.Err reject.Unmergeable.TakesTarget)
+  else
+    let s ← fact.FactRules.shape rules
+    match s with
+    | fact.Shape.Flag d =>
+      match d with
+      | fact.Direction.Up => ok (core.result.Result.Ok memory.Join.Either)
+      | fact.Direction.Down =>
+        ok (core.result.Result.Err reject.Unmergeable.VanishingFlag)
+      | fact.Direction.Free =>
+        ok (core.result.Result.Err reject.Unmergeable.NoDirection)
+    | fact.Shape.Number _ d =>
+      match d with
+      | fact.Direction.Up => ok (core.result.Result.Ok memory.Join.Larger)
+      | fact.Direction.Down => ok (core.result.Result.Ok memory.Join.Smaller)
+      | fact.Direction.Free =>
+        ok (core.result.Result.Err reject.Unmergeable.NoDirection)
+
+/-- [hourglass::memory::check_name]:
+    Source: 'src/memory.rs', lines 257:0-297:1 -/
+def memory.check_name
+  (schema : fact.FactVocabulary) (record : memory.Record) («name» : String)
+  (out : alloc.vec.Vec reject.Rejection) :
+  Result (alloc.vec.Vec reject.Rejection)
+  := do
+  let o ← names.Names.get_key record «name»
+  match o with
+  | none => ok out
+  | some value =>
+    let o1 ← fact.FactVocabulary.rules_key schema «name»
+    match o1 with
+    | none =>
+      let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+      alloc.vec.Vec.push out (reject.Rejection.Malformed
+        (reject.Malformed.UnknownFact s))
+    | some rules =>
+      let r ← memory.join_of rules
+      match r with
+      | core.result.Result.Ok _ =>
+        let s ← fact.FactRules.shape rules
+        match s with
+        | fact.Shape.Flag _ =>
+          match value with
+          | memory.Value.Flag _ => ok out
+          | memory.Value.Number _ =>
+            let s1 ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+            alloc.vec.Vec.push out (reject.Rejection.Malformed
+              (reject.Malformed.TakesNoNumber s1))
+        | fact.Shape.Number band _ =>
+          match value with
+          | memory.Value.Flag _ =>
+            let s1 ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+            alloc.vec.Vec.push out (reject.Rejection.Malformed
+              (reject.Malformed.NeedsNumber s1))
+          | memory.Value.Number n =>
+            let b ← fact.Band.holds band n
+            if b
+            then ok out
+            else
+              let s1 ←
+                alloc.string.String.Insts.CoreCloneClone.clone «name»
+              alloc.vec.Vec.push out (reject.Rejection.Malformed
+                (reject.Malformed.OutOfBand s1 n band.min band.max))
+      | core.result.Result.Err why =>
+        let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
+        alloc.vec.Vec.push out (reject.Rejection.Malformed
+          (reject.Malformed.Unmergeable s why))
+
+/-- [hourglass::memory::check_into]: loop 0:
+    Source: 'src/memory.rs', lines 249:4-252:5 -/
+@[rust_loop]
+def memory.check_into_loop
+  (schema : fact.FactVocabulary) (n : names.Names memory.Value)
+  (out : alloc.vec.Vec reject.Rejection) (names : alloc.vec.Vec String)
+  (i : Std.Usize) :
+  Result (alloc.vec.Vec reject.Rejection)
+  := do
+  let i1 := alloc.vec.Vec.len names
+  if i < i1
+  then
+    let s ←
+      alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice String) names
+        i
+    let out1 ← memory.check_name schema n s out
+    let i2 ← i + 1#usize
+    memory.check_into_loop schema n out1 names i2
+  else ok out
+partial_fixpoint
+
+/-- [hourglass::memory::check_into]:
+    Source: 'src/memory.rs', lines 246:0-253:1 -/
+def memory.check_into
+  (schema : fact.FactVocabulary) (record : memory.Record)
+  (out : alloc.vec.Vec reject.Rejection) :
+  Result (alloc.vec.Vec reject.Rejection)
+  := do
+  let names ← names.Names.keys record
+  memory.check_into_loop schema record out names 0#usize
+
+/-- [hourglass::memory::check]:
+    Source: 'src/memory.rs', lines 239:0-243:1
+    Visibility: public -/
+def memory.check
+  (schema : fact.FactVocabulary) (record : memory.Record) :
+  Result (alloc.vec.Vec reject.Rejection)
+  := do
+  memory.check_into schema record (alloc.vec.Vec.new reject.Rejection)
+
+/-- [hourglass::memory::merge_name]:
+    Source: 'src/memory.rs', lines 331:0-347:1 -/
+def memory.merge_name
+  (schema : fact.FactVocabulary) (a : memory.Record) (b : memory.Record)
+  («name» : String) (out : memory.Record) :
+  Result memory.Record
+  := do
+  let o ← fact.FactVocabulary.rules_key schema «name»
+  match o with
+  | none => ok out
+  | some rules =>
+    let r ← memory.join_of rules
+    match r with
+    | core.result.Result.Ok join =>
+      let o1 ← memory.Record.value a «name»
+      let o2 ← memory.Record.value b «name»
+      match o1 with
+      | none =>
+        match o2 with
+        | none => ok out
+        | some y => memory.Record.put out «name» y
+      | some x =>
+        let y ←
+          match o2 with
+          | none => ok x
+          | some y1 => memory.Join.of join x y1
+        memory.Record.put out «name» y
+    | core.result.Result.Err _ => ok out
+
+/-- [hourglass::memory::merge_names]: loop 0:
+    Source: 'src/memory.rs', lines 323:4-326:5 -/
+@[rust_loop]
+def memory.merge_names_loop
+  (schema : fact.FactVocabulary) (a : memory.Record) (b : memory.Record)
+  (names : Slice String) (out : memory.Record) (i : Std.Usize) :
+  Result memory.Record
+  := do
+  let i1 := Slice.len names
+  if i < i1
+  then
+    let s ← Slice.index_usize names i
+    let out1 ← memory.merge_name schema a b s out
+    let i2 ← i + 1#usize
+    memory.merge_names_loop schema a b names out1 i2
+  else ok out
+partial_fixpoint
+
+/-- [hourglass::memory::merge_names]:
+    Source: 'src/memory.rs', lines 321:0-327:1 -/
+@[reducible]
+def memory.merge_names
+  (schema : fact.FactVocabulary) (a : memory.Record) (b : memory.Record)
+  (names : Slice String) (out : memory.Record) :
+  Result memory.Record
+  := do
+  memory.merge_names_loop schema a b names out 0#usize
+
+/-- [hourglass::memory::merge]:
+    Source: 'src/memory.rs', lines 306:0-317:1
+    Visibility: public -/
+def memory.merge
+  (schema : fact.FactVocabulary) (a : memory.Record) (b : memory.Record) :
+  Result (core.result.Result memory.Record (alloc.vec.Vec reject.Rejection))
+  := do
+  let faults ←
+    memory.check_into schema a (alloc.vec.Vec.new reject.Rejection)
+  let faults1 ← memory.check_into schema b faults
+  let b1 ← alloc.vec.Vec.is_empty Global faults1
+  if b1
+  then
+    let out ← memory.Record.new
+    let v ← names.Names.keys a
+    let s := alloc.vec.Vec.deref v
+    let out1 ← memory.merge_names schema a b s out
+    let v1 ← names.Names.keys b
+    let s1 := alloc.vec.Vec.deref v1
+    let out2 ← memory.merge_names schema a b s1 out1
+    ok (core.result.Result.Ok out2)
+  else ok (core.result.Result.Err faults1)
 
 /-- [hourglass::time::{hourglass::time::TimeSpan}::open]:
     Source: 'src/time.rs', lines 50:4-52:5

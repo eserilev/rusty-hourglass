@@ -30,6 +30,9 @@ args+=(
   --exclude '{impl serde_core::de::Deserialize for _}'
   --exclude '{impl core::fmt::Debug for _}'
   --exclude '{impl core::hash::Hash for _}'
+  # The name map is a model in Lean (Hourglass/TypesExternal.lean), so
+  # Aeneas sees only the signatures of its operations.
+  --opaque 'hourglass::names'
 )
 
 (cd "$crate" && RUSTFLAGS="--cfg charon" "$AENEAS/charon/bin/charon" cargo "${args[@]}" --dest-file "$work/hourglass.llbc")

@@ -43,11 +43,12 @@
 
 use crate::event::EventKind;
 use crate::fact::{Direction, FactRules, FactVocabulary, Shape};
+use crate::names::Names;
 use crate::reject::{Malformed, Rejection, Unmergeable};
 use crate::time::EntityId;
 use crate::world::World;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 /// One value in a record. A whole number, or a flag.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -82,23 +83,50 @@ impl Value {
 /// holds for every input.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(from = "BTreeMap<String, Value>", into = "BTreeMap<String, Value>")]
-pub struct Record(BTreeMap<String, Value>);
+pub struct Record(Names<Value>);
 
 impl From<BTreeMap<String, Value>> for Record {
     fn from(map: BTreeMap<String, Value>) -> Self {
-        Record(map.into_iter().filter(|(_, v)| v.present()).collect())
+        Record(Names::from_map(
+            map.into_iter().filter(|(_, v)| v.present()).collect(),
+        ))
     }
 }
 
 impl From<Record> for BTreeMap<String, Value> {
     fn from(record: Record) -> Self {
-        record.0
+        record.0.into_map()
     }
 }
 
 impl Record {
     pub fn new() -> Self {
-        Record(BTreeMap::new())
+        Record(Names::new())
+    }
+
+    /// `get`, for the verified code (see `names.rs`).
+    #[allow(clippy::ptr_arg)]
+    fn value(&self, name: &String) -> Option<Value> {
+        match self.0.get_key(name) {
+            Some(v) => {
+                if v.present() {
+                    Some(*v)
+                } else {
+                    None
+                }
+            }
+            None => None,
+        }
+    }
+
+    /// `set`, for the verified code (see `names.rs`).
+    #[allow(clippy::ptr_arg)]
+    fn put(&mut self, name: &String, value: Value) {
+        if value.present() {
+            self.0.insert(name.clone(), value);
+        } else {
+            self.0.remove_key(name);
+        }
     }
 
     pub fn get(&self, name: &str) -> Option<Value> {
@@ -207,47 +235,65 @@ pub fn memory_names(schema: &FactVocabulary) -> Vec<String> {
 ///
 /// Three faults: a name the schema never declared, a value of the
 /// wrong shape, and a number outside its band.
+#[cfg_attr(charon, verify::start_from)]
 pub fn check(schema: &FactVocabulary, record: &Record) -> Vec<Rejection> {
     let mut out = Vec::new();
-    for (name, value) in record.names() {
-        let Some(rules) = schema.rules(name) else {
-            out.push(Rejection::Malformed(Malformed::UnknownFact {
-                name: name.clone(),
-            }));
-            continue;
-        };
-        if let Err(why) = join_of(rules) {
-            out.push(Rejection::Malformed(Malformed::Unmergeable {
-                name: name.clone(),
-                why,
-            }));
-            continue;
-        }
-        match (rules.shape(), value) {
-            (Shape::Number { band, .. }, Value::Number(n)) => {
-                if !band.holds(*n) {
-                    out.push(Rejection::Malformed(Malformed::OutOfBand {
-                        name: name.clone(),
-                        value: *n,
-                        min: band.min,
-                        max: band.max,
-                    }));
-                }
-            }
-            (Shape::Number { .. }, Value::Flag(_)) => {
-                out.push(Rejection::Malformed(Malformed::NeedsNumber {
-                    name: name.clone(),
-                }))
-            }
-            (Shape::Flag { .. }, Value::Number(_)) => {
-                out.push(Rejection::Malformed(Malformed::TakesNoNumber {
-                    name: name.clone(),
-                }))
-            }
-            (Shape::Flag { .. }, Value::Flag(_)) => {}
-        }
-    }
+    check_into(schema, record, &mut out);
     out
+}
+
+/// `check`, with the reasons added to `out`.
+fn check_into(schema: &FactVocabulary, record: &Record, out: &mut Vec<Rejection>) {
+    let names = record.0.keys();
+    let mut i = 0;
+    while i < names.len() {
+        check_name(schema, record, &names[i], out);
+        i += 1;
+    }
+}
+
+/// The faults of one name of the record.
+#[allow(clippy::ptr_arg)]
+fn check_name(schema: &FactVocabulary, record: &Record, name: &String, out: &mut Vec<Rejection>) {
+    let Some(value) = record.0.get_key(name) else {
+        return;
+    };
+    let Some(rules) = schema.rules_key(name) else {
+        out.push(Rejection::Malformed(Malformed::UnknownFact {
+            name: name.clone(),
+        }));
+        return;
+    };
+    if let Err(why) = join_of(rules) {
+        out.push(Rejection::Malformed(Malformed::Unmergeable {
+            name: name.clone(),
+            why,
+        }));
+        return;
+    }
+    match (rules.shape(), value) {
+        (Shape::Number { band, .. }, Value::Number(n)) => {
+            if !band.holds(*n) {
+                out.push(Rejection::Malformed(Malformed::OutOfBand {
+                    name: name.clone(),
+                    value: *n,
+                    min: band.min,
+                    max: band.max,
+                }));
+            }
+        }
+        (Shape::Number { .. }, Value::Flag(_)) => {
+            out.push(Rejection::Malformed(Malformed::NeedsNumber {
+                name: name.clone(),
+            }))
+        }
+        (Shape::Flag { .. }, Value::Number(_)) => {
+            out.push(Rejection::Malformed(Malformed::TakesNoNumber {
+                name: name.clone(),
+            }))
+        }
+        (Shape::Flag { .. }, Value::Flag(_)) => {}
+    }
 }
 
 /// Merge two records. The answer is the same whichever record
@@ -256,34 +302,48 @@ pub fn check(schema: &FactVocabulary, record: &Record) -> Vec<Rejection> {
 ///
 /// Every reason a record does not fit the schema comes back at
 /// once, and nothing merges until both records fit.
+#[cfg_attr(charon, verify::start_from)]
 pub fn merge(schema: &FactVocabulary, a: &Record, b: &Record) -> Result<Record, Vec<Rejection>> {
-    let mut faults = check(schema, a);
-    faults.extend(check(schema, b));
+    let mut faults = Vec::new();
+    check_into(schema, a, &mut faults);
+    check_into(schema, b, &mut faults);
     if !faults.is_empty() {
         return Err(faults);
     }
-    let mut names: BTreeSet<&String> = BTreeSet::new();
-    names.extend(a.0.keys());
-    names.extend(b.0.keys());
     let mut out = Record::new();
-    for name in names {
-        let Some(rules) = schema.rules(name) else {
-            continue;
-        };
-        let Ok(join) = join_of(rules) else {
-            continue;
-        };
-        let got = match (a.get(name), b.get(name)) {
-            (Some(x), Some(y)) => join.of(x, y),
-            // Absent is the start of the join, so one side alone
-            // wins. No default, and no clamp.
-            (Some(x), None) => x,
-            (None, Some(y)) => y,
-            (None, None) => continue,
-        };
-        out.set(name, got);
-    }
+    merge_names(schema, a, b, &a.0.keys(), &mut out);
+    merge_names(schema, a, b, &b.0.keys(), &mut out);
     Ok(out)
+}
+
+/// Join each name of the list into `out`. A name of both records
+/// comes twice, and the second write equals the first.
+fn merge_names(schema: &FactVocabulary, a: &Record, b: &Record, names: &[String], out: &mut Record) {
+    let mut i = 0;
+    while i < names.len() {
+        merge_name(schema, a, b, &names[i], out);
+        i += 1;
+    }
+}
+
+/// Join one name of the two records into `out`.
+#[allow(clippy::ptr_arg)]
+fn merge_name(schema: &FactVocabulary, a: &Record, b: &Record, name: &String, out: &mut Record) {
+    let Some(rules) = schema.rules_key(name) else {
+        return;
+    };
+    let Ok(join) = join_of(rules) else {
+        return;
+    };
+    let got = match (a.value(name), b.value(name)) {
+        (Some(x), Some(y)) => join.of(x, y),
+        // Absent is the start of the join, so one side alone
+        // wins. No default, and no clamp.
+        (Some(x), None) => x,
+        (None, Some(y)) => y,
+        (None, None) => return,
+    };
+    out.put(name, got);
 }
 
 /// The flat cut of one entity: its solo facts, as a record.

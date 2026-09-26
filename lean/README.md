@@ -1,9 +1,10 @@
 # The Lean proofs
 
 Aeneas translates the Rust code of the crate into pure Lean
-functions. The theorems in `Hourglass/Laws.lean` are about those
-functions. A theorem holds for every input, with no bound. Kani
-checks the same laws in `src/proofs.rs`, but only up to its bounds.
+functions. The theorems in `Hourglass/Laws.lean` and
+`Hourglass/Merge.lean` are about those functions. A theorem holds
+for every input, with no bound. Kani checks the rung 1 laws in
+`src/proofs.rs`, but only up to its bounds.
 
 The Lean is generated from the Rust, so it does not drift from the
 Rust. After a change to a marked function, run the extraction
@@ -28,17 +29,55 @@ again. If a law breaks, the build fails.
 Most theorems state the exact `ok` answer. So they also prove that
 the function does not panic on those inputs.
 
+## What is proved: rung 2, the record merge
+
+These laws hold for records of any size and for any schema. Before
+rung 2, a seeded sweep in `tests/laws.rs` checked them on random
+records only.
+
+| Theorem | The law |
+|---|---|
+| `merge_comm` | Two records merge to the same record in either order. |
+| `merge_self` | A merge of a record with itself gives the same record, so a merge that runs twice answers what it answered once. |
+| `merge_empty` | A merge with an empty record gives the other record. |
+| `merge_spec` | When both records fit the schema, the merge answers the join of each name. When one record does not fit, the merge refuses. |
+| `check_spec` | `check` finds no fault exactly when every name of the record fits the schema. |
+
+The laws have three conditions:
+
+1. **The records fit the schema** (`fits`). This is what `check`
+   finds, by `check_spec`. `merge_comm` needs no such condition: it
+   also covers two records that the merge refuses.
+2. **The records hold no false flag** (`wf`). `Record::set` and the
+   read from JSON keep this.
+3. **The two records together hold at most `usize::MAX` names.** A
+   larger record does not fit in memory.
+
+Associativity is not proved yet. The seeded sweep in
+`tests/laws.rs` still checks it.
+
 ## What you trust
 
 1. **Charon and Aeneas.** A bug in the translation makes the Lean
    differ from the Rust.
-2. **`Hourglass/FunsExternal.lean`.** Aeneas does not translate
-   std. This file gives a body to the three std items that the
-   core calls: `Option` equality, and `<` and `>=` on `Tick`. Read
-   it before you trust a theorem. It is short.
-3. **The three standard axioms of Lean.** `Hourglass/Trust.lean`
+2. **`Hourglass/FunsExternal.lean` and
+   `Hourglass/TypesExternal.lean`.** Aeneas does not translate std.
+   These files give a body to each std item that the verified code
+   uses. Read them before you trust a theorem. They are short.
+   - `Option` equality, `<` and `>=` on `Tick`, `String::clone`, and
+     `Vec::is_empty`.
+   - `Names<V>` (`src/names.rs`), the one map with a name for its
+     key. Its model is `Std.ExtTreeMap String V compare`, the
+     verified tree map of the Lean standard library. Each operation
+     is the `ExtTreeMap` operation of the same name.
+3. **The contract tests of the map.** The tests in `src/names.rs`
+   check the laws of the map model against the real `BTreeMap` on
+   random input. One test checks that Rust and Lean order strings
+   the same way.
+4. **The three standard axioms of Lean.** `Hourglass/Trust.lean`
    pins the axioms of each theorem with `#guard_msgs`. A `sorry` or
-   a new axiom fails the build.
+   a new axiom fails the build. The model files hold definitions
+   only, and no axioms.
 
 ## How to run
 
@@ -77,28 +116,24 @@ cannot select one method of an inherent impl block.
 
 ## The next rungs
 
-### Rung 2: the record merge
+### Rung 2: the record merge (BUILT, except associativity)
 
-Prove that `merge` is commutative, associative, and idempotent, for
-every record size and every schema. This is the law behind the gold
-that resurrects through a save.
+The next step is associativity. It needs one more lemma: a merged
+record fits the schema again. `join_stays_in_band` holds the core of
+that lemma.
 
-The spike found that `merge`, `check`, `join_of`, `Record::get`, and
-`Record::set` already translate. The only gap is std. `merge` calls
-these std items:
+Three facts about rung 2 help the next rungs:
 
-- `BTreeMap`: `new`, `get`, `insert`, `remove`, `len`, `iter`, `keys`
-- `BTreeSet`: `new`, `extend`, `into_iter`, `next`
-- `Vec`: `extend`, `is_empty`
-- `String`: `cmp`, `deref`, `to_string`
-- `Option`: `and_then`, `filter`
-
-The plan: put the maps behind one small wrapper type with about six
-operations. Mark the operations opaque, and state the map laws in
-Lean: `get` after `insert`, `get` on `empty`, and a walk in strictly
-ascending key order. Test each law in Rust against the real
-`BTreeMap` with proptest. Then the trusted model is about ten laws,
-not twenty std items.
+1. **A name map goes through `Names<V>`.** The verified code looks a
+   name up by `&String`, because Aeneas models `&str` as bytes. So
+   `Names` has `get_key` and `remove_key` next to `get` and `remove`,
+   and the contract tests check that each pair agrees.
+2. **A loop walks a `Vec` of keys by index.** Aeneas translates this
+   form into a recursive function. `step*` proves its loop lemma in
+   a few lines.
+3. **Each function gets a pure mirror first.** For example,
+   `merge_name_eq` says that `merge_name` answers `stepOut`. The laws
+   are about the mirrors, so they need no monad.
 
 ### Rung 3: the world
 

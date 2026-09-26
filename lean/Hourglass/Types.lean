@@ -2,6 +2,7 @@
 -- [hourglass]: type definitions
 module
 public import Aeneas
+public import Hourglass.TypesExternal
 @[expose] public section
 open Aeneas Aeneas.Std Result ControlFlow Error
 set_option linter.dupNamespace false
@@ -19,15 +20,25 @@ set_option maxRecDepth 2048
 
 namespace hourglass
 
+/-- [hourglass::entity::EntityType]
+    Source: 'src/entity.rs', lines 19:0-24:1
+    Visibility: public -/
+@[discriminant isize]
+inductive entity.EntityType where
+| Person : entity.EntityType
+| Place : entity.EntityType
+| Thing : entity.EntityType
+| Faction : entity.EntityType
+
 /-- [hourglass::fact::Band]
-    Source: 'src/fact.rs', lines 36:0-39:1
+    Source: 'src/fact.rs', lines 37:0-40:1
     Visibility: public -/
 structure fact.Band where
   min : Std.I64
   max : Std.I64
 
 /-- [hourglass::fact::Direction]
-    Source: 'src/fact.rs', lines 89:0-98:1
+    Source: 'src/fact.rs', lines 90:0-99:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.Direction where
@@ -36,7 +47,7 @@ inductive fact.Direction where
 | Free : fact.Direction
 
 /-- [hourglass::fact::Shape]
-    Source: 'src/fact.rs', lines 140:0-147:1
+    Source: 'src/fact.rs', lines 141:0-148:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.Shape where
@@ -44,7 +55,7 @@ inductive fact.Shape where
 | Number : fact.Band → fact.Direction → fact.Shape
 
 /-- [hourglass::fact::Count]
-    Source: 'src/fact.rs', lines 206:0-210:1
+    Source: 'src/fact.rs', lines 207:0-211:1
     Visibility: public -/
 @[discriminant isize]
 inductive fact.Count where
@@ -52,16 +63,43 @@ inductive fact.Count where
 | Many : fact.Count
 | AtMost : Std.U16 → fact.Count
 
+/-- [hourglass::fact::FactRules]
+    Source: 'src/fact.rs', lines 236:0-250:1
+    Visibility: public -/
+@[discriminant isize]
+inductive fact.FactRules where
+| Solo : fact.Shape → fact.FactRules
+| Linked :
+  fact.Shape →
+  fact.Count →
+  fact.Count →
+  alloc.collections.btree.map.BTreeMap entity.EntityType (alloc.vec.Vec
+    entity.EntityType) Global →
+  fact.FactRules
+
+/-- [hourglass::fact::FactVocabulary]
+    Source: 'src/fact.rs', lines 368:0-371:1
+    Visibility: public -/
+structure fact.FactVocabulary where
+  version : Std.U32
+  names : names.Names fact.FactRules
+
 /-- [hourglass::memory::Value]
-    Source: 'src/memory.rs', lines 55:0-58:1
+    Source: 'src/memory.rs', lines 56:0-59:1
     Visibility: public -/
 @[discriminant isize]
 inductive memory.Value where
 | Flag : Bool → memory.Value
 | Number : Std.I64 → memory.Value
 
+/-- [hourglass::memory::Record]
+    Source: 'src/memory.rs', lines 86:0-86:32
+    Visibility: public -/
+@[reducible]
+def memory.Record := names.Names memory.Value
+
 /-- [hourglass::memory::Join]
-    Source: 'src/memory.rs', lines 147:0-154:1
+    Source: 'src/memory.rs', lines 175:0-182:1
     Visibility: public -/
 @[discriminant isize]
 inductive memory.Join where
@@ -69,11 +107,116 @@ inductive memory.Join where
 | Smaller : memory.Join
 | Either : memory.Join
 
+/-- [hourglass::reject::Unmergeable]
+    Source: 'src/reject.rs', lines 165:0-177:1
+    Visibility: public -/
+@[discriminant isize]
+inductive reject.Unmergeable where
+| NoDirection : reject.Unmergeable
+| VanishingFlag : reject.Unmergeable
+| TakesTarget : reject.Unmergeable
+
 /-- [hourglass::time::Tick]
     Source: 'src/time.rs', lines 31:0-31:25
     Visibility: public -/
 @[reducible]
 def time.Tick := Std.U64
+
+/-- [hourglass::time::EntityId]
+    Source: 'src/time.rs', lines 16:0-16:29
+    Visibility: public -/
+@[reducible]
+def time.EntityId := Std.U32
+
+/-- [hourglass::reject::Migration]
+    Source: 'src/reject.rs', lines 181:0-191:1
+    Visibility: public -/
+@[discriminant isize]
+inductive reject.Migration where
+| DroppedName : reject.Migration
+| RulesChanged : reject.Migration
+| BandNarrowed :
+  (Std.I64 × Std.I64) →
+  (Std.I64 × Std.I64) →
+  reject.Migration
+
+/-- [hourglass::reject::Contradiction]
+    Source: 'src/reject.rs', lines 89:0-157:1
+    Visibility: public -/
+@[discriminant isize]
+inductive reject.Contradiction where
+| UnknownEntity : time.EntityId → reject.Contradiction
+| Gone : time.EntityId → reject.Contradiction
+| SelfReference : time.EntityId → reject.Contradiction
+| Cycle : time.EntityId → time.EntityId → reject.Contradiction
+| TooManyHolders :
+  String →
+  time.EntityId →
+  alloc.vec.Vec time.EntityId →
+  Std.U16 →
+  reject.Contradiction
+| TooManyTargets :
+  String →
+  time.EntityId →
+  alloc.vec.Vec time.EntityId →
+  Std.U16 →
+  reject.Contradiction
+| IdInUse : time.EntityId → reject.Contradiction
+| NoSuchFact :
+  time.EntityId →
+  String →
+  Option time.EntityId →
+  reject.Contradiction
+| Stale :
+  time.EntityId →
+  String →
+  Std.I64 →
+  Std.I64 →
+  reject.Contradiction
+| Backward :
+  time.EntityId →
+  String →
+  fact.Direction →
+  Option Std.I64 →
+  Option Std.I64 →
+  reject.Contradiction
+| TimeMovedBack : time.Tick → time.Tick → reject.Contradiction
+| NoMigrationPath : String → reject.Migration → reject.Contradiction
+| VersionStep : Std.U32 → Std.U32 → Bool → reject.Contradiction
+
+/-- [hourglass::reject::Malformed]
+    Source: 'src/reject.rs', lines 45:0-86:1
+    Visibility: public -/
+@[discriminant isize]
+inductive reject.Malformed where
+| UnknownFact : String → reject.Malformed
+| NeedsNumber : String → reject.Malformed
+| TakesNoNumber : String → reject.Malformed
+| NeedsTarget : String → reject.Malformed
+| TakesNoTarget : String → reject.Malformed
+| TypeNotAllowed :
+  String →
+  entity.EntityType →
+  entity.EntityType →
+  reject.Malformed
+| OutOfBand : String → Std.I64 → Std.I64 → Std.I64 → reject.Malformed
+| Backward :
+  String →
+  fact.Direction →
+  Option Std.I64 →
+  Option Std.I64 →
+  reject.Malformed
+| UnnamedEntity : time.EntityId → reject.Malformed
+| Unmergeable : String → reject.Unmergeable → reject.Malformed
+| BrokenVocabulary : String → String → reject.Malformed
+
+/-- [hourglass::reject::Rejection]
+    Source: 'src/reject.rs', lines 31:0-36:1
+    Visibility: public -/
+@[discriminant isize]
+inductive reject.Rejection where
+| Malformed : reject.Malformed → reject.Rejection
+| Contradiction : reject.Contradiction → reject.Rejection
 
 /-- [hourglass::time::TimeSpan]
     Source: 'src/time.rs', lines 42:0-45:1
