@@ -428,7 +428,7 @@ impl World {
 /// Does this name allow one target at a time? An undeclared name
 /// does not, so an unknown name closes its own slot only.
 #[allow(clippy::ptr_arg)]
-fn single_target(vocabulary: &FactVocabulary, name: &String) -> bool {
+pub(crate) fn single_target(vocabulary: &FactVocabulary, name: &String) -> bool {
     match vocabulary.rules_key(name) {
         Some(FactRules::Linked { targets, .. }) => targets.is_single(),
         _ => false,
@@ -470,10 +470,27 @@ fn drop_slot(facts: &mut Vec<Fact>, name: &String, linked_to: Option<EntityId>) 
 
 /// The place of the first fact in the slot, if one is there.
 #[allow(clippy::ptr_arg)]
-fn slot_index(facts: &[Fact], name: &String, linked_to: Option<EntityId>) -> Option<usize> {
+pub(crate) fn slot_index(
+    facts: &[Fact],
+    name: &String,
+    linked_to: Option<EntityId>,
+) -> Option<usize> {
     let mut i = 0;
     while i < facts.len() {
         if in_slot(&facts[i], name, linked_to) {
+            return Some(i);
+        }
+        i += 1;
+    }
+    None
+}
+
+/// The place of the first fact of the name, if one is there.
+#[allow(clippy::ptr_arg)]
+pub(crate) fn name_index(facts: &[Fact], name: &String) -> Option<usize> {
+    let mut i = 0;
+    while i < facts.len() {
+        if facts[i].name == *name {
             return Some(i);
         }
         i += 1;

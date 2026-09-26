@@ -122,22 +122,34 @@ decreasing_by all_goals (simp_all; scalar_tac)
   simp_all
 
 /-- The slot search answers a place inside the list, where the fact
-    sits in the slot, or nothing. -/
+    sits in the slot, or nothing when no fact from `i` sits there. -/
 @[step] theorem slot_index_loop_spec (facts : Slice Fact) (n : String)
     (l : Option time.EntityId) (i : Usize) :
     world.slot_index_loop facts n l i
-      ⦃ o => ∀ j, o = some j → ∃ hj : j.val < facts.length,
-        inSlot (facts.val[j.val]'(by simpa using hj)) n l = true ⦄ := by
+      ⦃ o => (∀ j, o = some j → ∃ hj : j.val < facts.length,
+        inSlot (facts.val[j.val]'(by simpa using hj)) n l = true) ∧
+        (o = none → ∀ g ∈ facts.val.drop i.val, inSlot g n l = false) ⦄ := by
   unfold world.slot_index_loop
   step*
+  · refine ⟨o_post, fun hn g hg => ?_⟩
+    have hlt : i.val < facts.val.length := by scalar_tac
+    rw [List.drop_eq_getElem_cons hlt, List.mem_cons] at hg
+    rcases hg with rfl | hg
+    · simp_all
+    · exact o_post1 hn g (by rw [i2_post]; exact hg)
+  · refine ⟨by simp, fun _ g hg => ?_⟩
+    have hle : facts.val.length ≤ i.val := by scalar_tac
+    simp [List.drop_eq_nil_of_le hle] at hg
 termination_by facts.length - i.val
 decreasing_by scalar_tac
 
 @[step] theorem slot_index_spec (facts : Slice Fact) (n : String) (l : Option time.EntityId) :
-    world.slot_index facts n l ⦃ o => ∀ j, o = some j → ∃ hj : j.val < facts.length,
-      inSlot (facts.val[j.val]'(by simpa using hj)) n l = true ⦄ := by
+    world.slot_index facts n l ⦃ o => (∀ j, o = some j → ∃ hj : j.val < facts.length,
+      inSlot (facts.val[j.val]'(by simpa using hj)) n l = true) ∧
+      (o = none → ∀ g ∈ facts.val, inSlot g n l = false) ⦄ := by
   unfold world.slot_index
   step*
+  exact ⟨fun j hj => by simpa using o_post j hj, fun hn => by simpa using o_post1 hn⟩
 
 /-! ## One fact per slot -/
 
@@ -315,7 +327,7 @@ theorem apply_one_fact_per_slot (m : ids.Ids Entity) (v : FactVocabulary) (ev : 
         simp only [ok.injEq] at ho1'
         subst ho1'
         have hi : i.val < row.facts.val.length := by
-          simpa [alloc.vec.Vec.deref] using (hlt i rfl).1
+          simpa [alloc.vec.Vec.deref] using (hlt.1 i rfl).1
         simp only [alloc.vec.Vec.index_mut_usize, alloc.vec.Vec.index_usize] at hvf
         simp [hi] at hvf
         subst hvf
@@ -582,7 +594,7 @@ theorem apply_one_target (m : ids.Ids Entity) (v : FactVocabulary) (ev : Event)
           simp only [ok.injEq] at ho1'
           subst ho1'
           have hi : i.val < row.facts.val.length := by
-            simpa [alloc.vec.Vec.deref] using (hlt i rfl).1
+            simpa [alloc.vec.Vec.deref] using (hlt.1 i rfl).1
           simp only [alloc.vec.Vec.index_mut_usize, alloc.vec.Vec.index_usize] at hvf
           simp [hi] at hvf
           subst hvf

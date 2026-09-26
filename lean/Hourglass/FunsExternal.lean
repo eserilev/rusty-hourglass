@@ -246,20 +246,6 @@ axiom validate.queries.count_faults
   world.World → time.EntityId → String → fact.FactRules → time.EntityId
     → Result (alloc.vec.Vec reject.Rejection)
 
-/-- [hourglass::validate::queries::held_for_start]:
-    Source: 'src/validate.rs', lines 405:4-418:5 -/
-axiom validate.queries.held_for_start
-  :
-  world.World → time.EntityId → String → Option time.EntityId → Result
-    (Option (Option Std.I64))
-
-/-- [hourglass::validate::queries::slot_value]:
-    Source: 'src/validate.rs', lines 423:4-432:5 -/
-axiom validate.queries.slot_value
-  :
-  world.World → time.EntityId → String → Option time.EntityId → Result
-    (Option (Option Std.I64))
-
 /-- [hourglass::validate::queries::ended_before]:
     Source: 'src/validate.rs', lines 435:4-437:5 -/
 axiom validate.queries.ended_before

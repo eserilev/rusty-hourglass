@@ -17,7 +17,7 @@ use crate::event::EventKind;
 use crate::fact::{Count, FactRules, FactVocabulary, Shape, LOCATED_IN};
 use crate::reject::{Contradiction, Malformed, Rejection};
 use crate::time::{EntityId, Tick};
-use crate::world::World;
+use crate::world::{name_index, single_target, slot_index, World};
 
 /// Every reason this event cannot land. An empty answer means it
 /// can.
@@ -129,7 +129,7 @@ fn start(
     }
     // The direction, against what the world holds now. A best
     // depth that starts again at zero is the case this catches.
-    let held = queries::held_for_start(w, who, name, linked_to);
+    let held = held_for_start(w, who, name, linked_to);
     let direction = shape.direction();
     match held {
         Some(held_value) => {
@@ -209,7 +209,7 @@ fn update(
     if !holder {
         return;
     }
-    match queries::slot_value(w, who, name, linked_to) {
+    match slot_value(w, who, name, linked_to) {
         None => out.push(Rejection::Contradiction(Contradiction::NoSuchFact {
             entity: who,
             name: name.clone(),
@@ -264,7 +264,7 @@ fn end(
         }));
     }
     target_fits(name, rules, linked_to, out);
-    if w.entity(who).is_some() && queries::slot_value(w, who, name, linked_to).is_none() {
+    if w.entity(who).is_some() && slot_value(w, who, name, linked_to).is_none() {
         out.push(Rejection::Contradiction(Contradiction::NoSuchFact {
             entity: who,
             name: name.clone(),
@@ -293,6 +293,53 @@ fn live_holder(w: &World, who: EntityId, out: &mut Vec<Rejection>) -> bool {
             }
             true
         }
+    }
+}
+
+/// The fact a start meets, as its value: the first fact of a
+/// single-target name, or the first fact in the slot. Nothing when no
+/// fact is there.
+///
+/// The `match` stays in place of `?` and `map`: the proofs model no
+/// `Try` trait and no closure.
+#[allow(clippy::ptr_arg, clippy::question_mark, clippy::manual_map)]
+fn held_for_start(
+    w: &World,
+    who: EntityId,
+    name: &String,
+    linked_to: Option<EntityId>,
+) -> Option<Option<i64>> {
+    let row = match w.entity(who) {
+        Some(row) => row,
+        None => return None,
+    };
+    let at = if single_target(&w.vocabulary, name) {
+        name_index(&row.facts, name)
+    } else {
+        slot_index(&row.facts, name, linked_to)
+    };
+    match at {
+        Some(i) => Some(row.facts[i].value),
+        None => None,
+    }
+}
+
+/// The value of the first fact in the slot. Nothing when the entity or
+/// the fact is not there.
+#[allow(clippy::ptr_arg, clippy::question_mark, clippy::manual_map)]
+fn slot_value(
+    w: &World,
+    who: EntityId,
+    name: &String,
+    linked_to: Option<EntityId>,
+) -> Option<Option<i64>> {
+    let row = match w.entity(who) {
+        Some(row) => row,
+        None => return None,
+    };
+    match slot_index(&row.facts, name, linked_to) {
+        Some(i) => Some(row.facts[i].value),
+        None => None,
     }
 }
 
@@ -396,39 +443,6 @@ mod queries {
         let mut out = Vec::new();
         counts_fit(w, who, name, rules, target, &mut out);
         out
-    }
-
-    /// The fact a start meets, as its value: the one fact of a
-    /// single-target name, or the fact in the slot. Nothing when no
-    /// fact is there.
-    #[allow(clippy::ptr_arg)]
-    pub(super) fn held_for_start(
-        w: &World,
-        who: EntityId,
-        name: &String,
-        linked_to: Option<EntityId>,
-    ) -> Option<Option<i64>> {
-        let held = match w.target_count(name) {
-            Some(count) if count.is_single() => {
-                w.entity(who).and_then(|e| e.facts_named(name).next())
-            }
-            _ => w.entity(who).and_then(|e| e.fact(name, linked_to)),
-        };
-        held.map(|f| f.value)
-    }
-
-    /// The value of the fact in the slot. Nothing when the entity or
-    /// the fact is not there.
-    #[allow(clippy::ptr_arg)]
-    pub(super) fn slot_value(
-        w: &World,
-        who: EntityId,
-        name: &String,
-        linked_to: Option<EntityId>,
-    ) -> Option<Option<i64>> {
-        w.entity(who)
-            .and_then(|e| e.fact(name, linked_to))
-            .map(|f| f.value)
     }
 
     #[allow(clippy::ptr_arg)]

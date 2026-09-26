@@ -338,8 +338,8 @@ theorem apply_in_band (m : ids.Ids Entity) (v : FactVocabulary) (ev : Event)
         rw [ho1] at ho1'
         simp only [ok.injEq] at ho1'
         subst ho1'
-        have hj := (hlt i rfl).fst
-        have hin := (hlt i rfl).snd
+        have hj := (hlt.1 i rfl).fst
+        have hin := (hlt.1 i rfl).snd
         have hi : i.val < row.facts.val.length := by simpa [alloc.vec.Vec.deref] using hj
         have hname : (row.facts.val[i.val]).name = nm := by
           simp [inSlot, slotOf, alloc.vec.Vec.deref] at hin

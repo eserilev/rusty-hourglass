@@ -12,7 +12,7 @@ second time and checks twelve invariants. Sixty-five tests pass,
 and ten Kani harnesses prove the join laws per value, the direction
 law, and the band laws. `merge` applies the join name by name.
 Aeneas translates the scalar core and the record merge to Lean.
-Thirty-six Lean theorems hold for every input with no bound
+Forty-two Lean theorems hold for every input with no bound
 (`lean/README.md`): the ten Kani laws, panic freedom of the join,
 and the record laws. A merge answers the same in either order, and
 it ignores the grouping. A merge with itself or with an empty
@@ -26,8 +26,10 @@ inside `apply` for every world that commits build: one fact per
 slot, one fact per single-target name, and an entity never
 vanishes. Six more hold the band law of the gate: in every world
 that proposals build, every fact carries a declared name, and every
-number sits inside the band of its name. No consumer calls the
-crate yet.
+number sits inside the band of its name. Six more hold the
+direction law: in every world that proposals build, a fact of an
+`Up` name never falls and never ends. No consumer calls the crate
+yet.
 
 The build went past the decisions below in eleven places. The
 section "Built past the decisions" names each one. Read that
@@ -1089,9 +1091,9 @@ the poor fits too, so nobody re-litigates them.
 4. Verus or Creusot only when the shared game-server world makes a
    state divergence expensive.
 5. Aeneas, one rung at a time. The built rungs are the scalar core,
-   the record merge, the world laws, the rules inside `apply`, and
-   the band law of `validate`. Next: the world queries of the gate, for example no
-   cycle in `located_in`. `lean/README.md` holds the rungs and the
+   the record merge, the world laws, the rules inside `apply`, the
+   band law, and the direction law. Next: the other world queries of
+   the gate, for example no cycle in `located_in`. `lean/README.md` holds the rungs and the
    map of the code that does not translate yet.
 
 ## Built past the decisions

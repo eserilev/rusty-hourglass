@@ -3,8 +3,8 @@
 Aeneas translates the Rust code of the crate into pure Lean
 functions. The theorems in `Hourglass/Laws.lean`,
 `Hourglass/Merge.lean`, `Hourglass/World.lean`,
-`Hourglass/Apply.lean`, and `Hourglass/Gate.lean` are about those
-functions. A theorem holds
+`Hourglass/Apply.lean`, `Hourglass/Gate.lean`, and
+`Hourglass/Direction.lean` are about those functions. A theorem holds
 for every input, with no bound. Kani checks the rung 1 laws in
 `src/proofs.rs`, but only up to its bounds.
 
@@ -103,6 +103,19 @@ faults, and each fault only adds to the list. So "no fault at the
 end" means "no band fault", for every answer of the queries. The
 pins name the queries that each law reads.
 
+## What is proved: rung 5, the direction law
+
+| Theorem | The law |
+|---|---|
+| `up_never_falls` | In a world that proposals build from an empty world, a fact of an `Up` name stays in its slot in every later world, and its number never falls. For example, a best depth never falls, and an unlock is never lost. |
+| `apply_up` | One clean event never lowers and never ends a fact of an `Up` name. |
+| `validate_dir` | A gate with no fault passes only an event that keeps the direction. A start does not go back from the value it meets, an update replaces the value the world holds and does not go back from it, and a fact ends only when its direction allows an end. |
+| `start_dir`, `update_dir`, and `end_dir` | The same, for each branch of the gate. |
+
+The law covers every `Up` name that is not single-target. A
+single-target name moves its fact to a new target, so the fact
+leaves its old slot on purpose.
+
 ## What you trust
 
 1. **Charon and Aeneas.** A bug in the translation makes the Lean
@@ -131,7 +144,7 @@ pins name the queries that each law reads.
 4. **The three standard axioms of Lean.** `Hourglass/Trust.lean`
    pins the axioms of each theorem with `#guard_msgs`. A `sorry` or
    a new axiom fails the build. The model files hold definitions
-   only, with one exception: the eight world queries of the gate
+   only, with one exception: the six world queries of the gate
    (`validate::queries`). They are axioms with no body, and only the
    pins of the laws that read `validate` name them. An axiom that
    only names a function of an inhabited type cannot make the logic
@@ -228,11 +241,14 @@ the same order:
    same place as before.
 3. `Ids::get` has a model.
 
-### Rung 5: the world queries
+### Rung 5: the world queries (the direction law is BUILT)
 
-For example: no cycle in `located_in`, the direction of a start
-against the fact it meets, and the counts of holders and targets.
-These laws read the queries, so the queries must translate first:
+The slot queries `slot_value` and `held_for_start` now translate as
+index loops. So the direction law reads their real answers.
+
+What waits: no cycle in `located_in`, and the counts of holders and
+targets. These laws read the remaining queries, so those must
+translate first:
 
 | Group | Where | The fix |
 |---|---|---|

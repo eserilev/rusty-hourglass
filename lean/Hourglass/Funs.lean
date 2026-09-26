@@ -887,7 +887,7 @@ def world.World.entity
   ids.Ids.get self.entities id
 
 /-- [hourglass::validate::target_fits]:
-    Source: 'src/validate.rs', lines 332:0-347:1 -/
+    Source: 'src/validate.rs', lines 379:0-394:1 -/
 def validate.target_fits
   («name» : String) (rules : fact.FactRules)
   (linked_to : Option time.EntityId) (out : alloc.vec.Vec reject.Rejection) :
@@ -909,6 +909,71 @@ def validate.target_fits
       let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
       alloc.vec.Vec.push out (reject.Rejection.Malformed
         (reject.Malformed.TakesNoTarget s))
+
+/-- [hourglass::world::in_slot]:
+    Source: 'src/world.rs', lines 441:0-443:1 -/
+def world.in_slot
+  (f : fact.Fact) («name» : String) (linked_to : Option time.EntityId) :
+  Result Bool
+  := do
+  let b ← alloc.string.String.Insts.CoreCmpPartialEqString.eq f.name «name»
+  if b
+  then
+    core.option.Option.Insts.CoreCmpPartialEqOption.eq
+      time.EntityId.Insts.CoreCmpPartialEqEntityId f.linked_to linked_to
+  else ok false
+
+/-- [hourglass::world::slot_index]: loop 0:
+    Source: 'src/world.rs', lines 479:4-486:1 -/
+@[rust_loop]
+def world.slot_index_loop
+  (facts : Slice fact.Fact) («name» : String)
+  (linked_to : Option time.EntityId) (i : Std.Usize) :
+  Result (Option Std.Usize)
+  := do
+  let i1 := Slice.len facts
+  if i < i1
+  then
+    let f ← Slice.index_usize facts i
+    let b ← world.in_slot f «name» linked_to
+    if b
+    then ok (some i)
+    else
+      let i2 ← i + 1#usize
+      world.slot_index_loop facts «name» linked_to i2
+  else ok none
+partial_fixpoint
+
+/-- [hourglass::world::slot_index]:
+    Source: 'src/world.rs', lines 473:0-486:1 -/
+@[reducible]
+def world.slot_index
+  (facts : Slice fact.Fact) («name» : String)
+  (linked_to : Option time.EntityId) :
+  Result (Option Std.Usize)
+  := do
+  world.slot_index_loop facts «name» linked_to 0#usize
+
+/-- [hourglass::validate::slot_value]:
+    Source: 'src/validate.rs', lines 330:0-344:1 -/
+def validate.slot_value
+  (w : world.World) (who : time.EntityId) («name» : String)
+  (linked_to : Option time.EntityId) :
+  Result (Option (Option Std.I64))
+  := do
+  let o ← world.World.entity w who
+  match o with
+  | none => ok none
+  | some row =>
+    let s := alloc.vec.Vec.deref row.facts
+    let o1 ← world.slot_index s «name» linked_to
+    match o1 with
+    | none => ok none
+    | some i =>
+      let f ←
+        alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice fact.Fact)
+          row.facts i
+      ok (some f.value)
 
 /-- [hourglass::validate::end]:
     Source: 'src/validate.rs', lines 239:0-274:1 -/
@@ -948,7 +1013,7 @@ def validate.end
     let b2 := core.option.Option.is_some o2
     if b2
     then
-      let o3 ← validate.queries.slot_value w who «name» linked_to
+      let o3 ← validate.slot_value w who «name» linked_to
       let b3 := core.option.Option.is_none o3
       if b3
       then
@@ -1028,7 +1093,7 @@ def validate.update
     let out3 ← validate.target_fits «name» rules linked_to out2
     if holder
     then
-      let o1 ← validate.queries.slot_value w who «name» linked_to
+      let o1 ← validate.slot_value w who «name» linked_to
       match o1 with
       | none =>
         let s ← alloc.string.String.Insts.CoreCloneClone.clone «name»
@@ -1048,7 +1113,7 @@ def validate.update
     else ok out3
 
 /-- [hourglass::validate::number_fits]:
-    Source: 'src/validate.rs', lines 309:0-329:1 -/
+    Source: 'src/validate.rs', lines 356:0-376:1 -/
 def validate.number_fits
   («name» : String) (shape : fact.Shape) (value : Option Std.I64)
   (out : alloc.vec.Vec reject.Rejection) :
@@ -1078,7 +1143,7 @@ def validate.number_fits
           (reject.Malformed.OutOfBand s n band.min band.max))
 
 /-- [hourglass::validate::push_all]: loop 0:
-    Source: 'src/validate.rs', lines 302:4-305:5 -/
+    Source: 'src/validate.rs', lines 349:4-352:5 -/
 @[rust_loop]
 def validate.push_all_loop
   (out : alloc.vec.Vec reject.Rejection) (faults : Slice reject.Rejection)
@@ -1097,13 +1162,81 @@ def validate.push_all_loop
 partial_fixpoint
 
 /-- [hourglass::validate::push_all]:
-    Source: 'src/validate.rs', lines 300:0-306:1 -/
+    Source: 'src/validate.rs', lines 347:0-353:1 -/
 @[reducible]
 def validate.push_all
   (out : alloc.vec.Vec reject.Rejection) (faults : Slice reject.Rejection) :
   Result (alloc.vec.Vec reject.Rejection)
   := do
   validate.push_all_loop out faults 0#usize
+
+/-- [hourglass::world::name_index]: loop 0:
+    Source: 'src/world.rs', lines 492:4-499:1 -/
+@[rust_loop]
+def world.name_index_loop
+  (facts : Slice fact.Fact) («name» : String) (i : Std.Usize) :
+  Result (Option Std.Usize)
+  := do
+  let i1 := Slice.len facts
+  if i < i1
+  then
+    let f ← Slice.index_usize facts i
+    let b ←
+      alloc.string.String.Insts.CoreCmpPartialEqString.eq f.name «name»
+    if b
+    then ok (some i)
+    else let i2 ← i + 1#usize
+         world.name_index_loop facts «name» i2
+  else ok none
+partial_fixpoint
+
+/-- [hourglass::world::name_index]:
+    Source: 'src/world.rs', lines 490:0-499:1 -/
+@[reducible]
+def world.name_index
+  (facts : Slice fact.Fact) («name» : String) :
+  Result (Option Std.Usize)
+  := do
+  world.name_index_loop facts «name» 0#usize
+
+/-- [hourglass::world::single_target]:
+    Source: 'src/world.rs', lines 431:0-436:1 -/
+def world.single_target
+  (vocabulary : fact.FactVocabulary) («name» : String) : Result Bool := do
+  let o ← fact.FactVocabulary.rules_key vocabulary «name»
+  match o with
+  | none => ok false
+  | some fr =>
+    match fr with
+    | fact.FactRules.Solo _ => ok false
+    | fact.FactRules.Linked _ _ targets _ => fact.Count.is_single targets
+
+/-- [hourglass::validate::held_for_start]:
+    Source: 'src/validate.rs', lines 306:0-325:1 -/
+def validate.held_for_start
+  (w : world.World) (who : time.EntityId) («name» : String)
+  (linked_to : Option time.EntityId) :
+  Result (Option (Option Std.I64))
+  := do
+  let o ← world.World.entity w who
+  match o with
+  | none => ok none
+  | some row =>
+    let b ← world.single_target w.vocabulary «name»
+    let «at» ←
+      if b
+      then let s := alloc.vec.Vec.deref row.facts
+           world.name_index s «name»
+      else
+        let s := alloc.vec.Vec.deref row.facts
+        world.slot_index s «name» linked_to
+    match «at» with
+    | none => ok none
+    | some i =>
+      let f ←
+        alloc.vec.Vec.index (core.slice.index.SliceIndexUsizeSlice fact.Fact)
+          row.facts i
+      ok (some f.value)
 
 /-- [hourglass::validate::start]:
     Source: 'src/validate.rs', lines 83:0-160:1 -/
@@ -1169,7 +1302,7 @@ def validate.start
         else ok out6
     if holder
     then
-      let held ← validate.queries.held_for_start w who «name» linked_to
+      let held ← validate.held_for_start w who «name» linked_to
       let direction ← fact.Shape.direction shape
       match held with
       | none =>
@@ -1261,50 +1394,6 @@ def world.World.new
   let eh ← event.EventHistory.new
   ok { tick := 0#u64, vocabulary, entities := i, history := eh }
 
-/-- [hourglass::world::in_slot]:
-    Source: 'src/world.rs', lines 441:0-443:1 -/
-def world.in_slot
-  (f : fact.Fact) («name» : String) (linked_to : Option time.EntityId) :
-  Result Bool
-  := do
-  let b ← alloc.string.String.Insts.CoreCmpPartialEqString.eq f.name «name»
-  if b
-  then
-    core.option.Option.Insts.CoreCmpPartialEqOption.eq
-      time.EntityId.Insts.CoreCmpPartialEqEntityId f.linked_to linked_to
-  else ok false
-
-/-- [hourglass::world::slot_index]: loop 0:
-    Source: 'src/world.rs', lines 475:4-482:1 -/
-@[rust_loop]
-def world.slot_index_loop
-  (facts : Slice fact.Fact) («name» : String)
-  (linked_to : Option time.EntityId) (i : Std.Usize) :
-  Result (Option Std.Usize)
-  := do
-  let i1 := Slice.len facts
-  if i < i1
-  then
-    let f ← Slice.index_usize facts i
-    let b ← world.in_slot f «name» linked_to
-    if b
-    then ok (some i)
-    else
-      let i2 ← i + 1#usize
-      world.slot_index_loop facts «name» linked_to i2
-  else ok none
-partial_fixpoint
-
-/-- [hourglass::world::slot_index]:
-    Source: 'src/world.rs', lines 473:0-482:1 -/
-@[reducible]
-def world.slot_index
-  (facts : Slice fact.Fact) («name» : String)
-  (linked_to : Option time.EntityId) :
-  Result (Option Std.Usize)
-  := do
-  world.slot_index_loop facts «name» linked_to 0#usize
-
 /-- [hourglass::world::drop_slot]: loop 0:
     Source: 'src/world.rs', lines 462:4-468:5 -/
 @[rust_loop]
@@ -1372,18 +1461,6 @@ def world.drop_name
   Result (alloc.vec.Vec fact.Fact)
   := do
   world.drop_name_loop facts «name» 0#usize
-
-/-- [hourglass::world::single_target]:
-    Source: 'src/world.rs', lines 431:0-436:1 -/
-def world.single_target
-  (vocabulary : fact.FactVocabulary) («name» : String) : Result Bool := do
-  let o ← fact.FactVocabulary.rules_key vocabulary «name»
-  match o with
-  | none => ok false
-  | some fr =>
-    match fr with
-    | fact.FactRules.Solo _ => ok false
-    | fact.FactRules.Linked _ _ targets _ => fact.Count.is_single targets
 
 /-- [hourglass::world::{hourglass::world::World}::apply]:
     Source: 'src/world.rs', lines 159:4-244:5 -/
