@@ -20,6 +20,15 @@ set_option maxRecDepth 2048
 
 namespace hourglass
 
+/-- Trait declaration: [core::alloc::AllocatorClone]
+    Source: '/rustc/library/core/src/alloc/mod.rs', lines 541:0-541:50
+    Name pattern: [core::alloc::AllocatorClone]
+    Visibility: public -/
+@[rust_trait "core::alloc::AllocatorClone"
+  (parentClauses := ["cloneCloneInst"])]
+structure core.alloc.AllocatorClone (Self : Type) where
+  cloneCloneInst : core.clone.Clone Self
+
 /-- [hourglass::entity::EntityType]
     Source: 'src/entity.rs', lines 19:0-24:1
     Visibility: public -/
@@ -29,6 +38,94 @@ inductive entity.EntityType where
 | Place : entity.EntityType
 | Thing : entity.EntityType
 | Faction : entity.EntityType
+
+/-- [hourglass::time::Tick]
+    Source: 'src/time.rs', lines 31:0-31:25
+    Visibility: public -/
+@[reducible]
+def time.Tick := Std.U64
+
+/-- [hourglass::time::TimeSpan]
+    Source: 'src/time.rs', lines 42:0-45:1
+    Visibility: public -/
+structure time.TimeSpan where
+  «from» : time.Tick
+  «until» : Option time.Tick
+
+/-- [hourglass::time::EntityId]
+    Source: 'src/time.rs', lines 16:0-16:29
+    Visibility: public -/
+@[reducible]
+def time.EntityId := Std.U32
+
+/-- [hourglass::time::EventId]
+    Source: 'src/time.rs', lines 23:0-23:28
+    Visibility: public -/
+@[reducible]
+def time.EventId := Std.U64
+
+/-- [hourglass::fact::Fact]
+    Source: 'src/fact.rs', lines 342:0-352:1
+    Visibility: public -/
+structure fact.Fact where
+  «name» : String
+  value : Option Std.I64
+  linked_to : Option time.EntityId
+  opened : time.EventId
+
+/-- [hourglass::entity::Entity]
+    Source: 'src/entity.rs', lines 49:0-57:1
+    Visibility: public -/
+structure entity.Entity where
+  id : time.EntityId
+  entity_type : entity.EntityType
+  «name» : String
+  existence : time.TimeSpan
+  facts : alloc.vec.Vec fact.Fact
+
+/-- [hourglass::event::EventKind]
+    Source: 'src/event.rs', lines 31:0-58:1
+    Visibility: public -/
+@[discriminant isize]
+inductive event.EventKind where
+| EntityCreated :
+  time.EntityId →
+  entity.EntityType →
+  String →
+  event.EventKind
+| EntityDestroyed : time.EntityId → event.EventKind
+| FactStart :
+  time.EntityId →
+  String →
+  Option Std.I64 →
+  Option time.EntityId →
+  event.EventKind
+| FactUpdate :
+  time.EntityId →
+  String →
+  Option time.EntityId →
+  Std.I64 →
+  Std.I64 →
+  event.EventKind
+| FactEnd :
+  time.EntityId →
+  String →
+  Option time.EntityId →
+  event.EventKind
+
+/-- [hourglass::event::Event]
+    Source: 'src/event.rs', lines 18:0-22:1
+    Visibility: public -/
+structure event.Event where
+  id : time.EventId
+  tick : time.Tick
+  kind : event.EventKind
+
+/-- [hourglass::event::EventHistory]
+    Source: 'src/event.rs', lines 102:0-102:36
+    Visibility: public -/
+@[reducible]
+def event.EventHistory := alloc.vec.Vec event.Event
 
 /-- [hourglass::fact::Band]
     Source: 'src/fact.rs', lines 37:0-40:1
@@ -115,18 +212,6 @@ inductive reject.Unmergeable where
 | NoDirection : reject.Unmergeable
 | VanishingFlag : reject.Unmergeable
 | TakesTarget : reject.Unmergeable
-
-/-- [hourglass::time::Tick]
-    Source: 'src/time.rs', lines 31:0-31:25
-    Visibility: public -/
-@[reducible]
-def time.Tick := Std.U64
-
-/-- [hourglass::time::EntityId]
-    Source: 'src/time.rs', lines 16:0-16:29
-    Visibility: public -/
-@[reducible]
-def time.EntityId := Std.U32
 
 /-- [hourglass::reject::Migration]
     Source: 'src/reject.rs', lines 181:0-191:1
@@ -218,11 +303,14 @@ inductive reject.Rejection where
 | Malformed : reject.Malformed → reject.Rejection
 | Contradiction : reject.Contradiction → reject.Rejection
 
-/-- [hourglass::time::TimeSpan]
-    Source: 'src/time.rs', lines 42:0-45:1
+/-- [hourglass::world::World]
+    Source: 'src/world.rs', lines 58:0-63:1
     Visibility: public -/
-structure time.TimeSpan where
-  «from» : time.Tick
-  «until» : Option time.Tick
+structure world.World where
+  tick : time.Tick
+  vocabulary : fact.FactVocabulary
+  entities : alloc.collections.btree.map.BTreeMap time.EntityId entity.Entity
+    Global
+  history : event.EventHistory
 
 end hourglass

@@ -2,6 +2,7 @@
 -- of Lean. A `sorry` or a new axiom changes the output, and the build fails.
 import Hourglass.Laws
 import Hourglass.Merge
+import Hourglass.World
 
 open hourglass
 
@@ -76,4 +77,36 @@ open hourglass
 /-- info: 'hourglass.mergeRec_fits' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms mergeRec_fits
+
+
+/-! The rung 3 laws hold for every `apply` and every `validate`. So each
+    pin names those two opaque crate functions, and no other axiom. -/
+
+/-- info: 'hourglass.replay_one_of_commit' depends on axioms: [propext, Classical.choice, Quot.sound, world.World.apply] -/
+#guard_msgs in
+#print axioms replay_one_of_commit
+
+/-- info: 'hourglass.replay_is_the_world' depends on axioms: [propext, Classical.choice, Quot.sound, world.World.apply] -/
+#guard_msgs in
+#print axioms replay_is_the_world
+
+/-- info: 'hourglass.rewind_is_exact' depends on axioms: [propext, Classical.choice, Quot.sound, world.World.apply] -/
+#guard_msgs in
+#print axioms rewind_is_exact
+
+/-- info: 'hourglass.propose_ok' depends on axioms: [propext, Classical.choice, Quot.sound, validate.validate, world.World.apply] -/
+#guard_msgs in
+#print axioms propose_ok
+
+/-- info: 'hourglass.propose_err' depends on axioms: [propext, Classical.choice, Quot.sound, validate.validate, world.World.apply] -/
+#guard_msgs in
+#print axioms propose_err
+
+/-- info: 'hourglass.reach_propose' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ validate.validate,
+ world.World.apply] -/
+#guard_msgs in
+#print axioms reach_propose
 

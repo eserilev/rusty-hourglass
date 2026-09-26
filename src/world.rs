@@ -63,6 +63,7 @@ pub struct World {
 }
 
 impl World {
+    #[cfg_attr(charon, verify::start_from)]
     pub fn new(vocabulary: FactVocabulary) -> Self {
         World {
             tick: Tick(0),
@@ -111,6 +112,7 @@ impl World {
 
     /// Check the event, then fold it in. Every reason comes back
     /// at once, so one retry fixes everything.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn propose(&mut self, tick: Tick, kind: EventKind) -> Result<EventId, Vec<Rejection>> {
         let faults = validate::validate(self, tick, &kind);
         if !faults.is_empty() {
@@ -135,10 +137,14 @@ impl World {
 
     /// Fold an event in with no check. The caller carries the
     /// promise that it is legal.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn commit(&mut self, tick: Tick, kind: EventKind) -> EventId {
-        let id = self.history.push(tick, kind);
-        let event = self.history.get(id).expect("the push just landed").clone();
-        self.fold(&event);
+        // A local never takes the name of a module (`event`, `world`):
+        // Aeneas writes the same name for both, and the Lean breaks.
+        let id = self.history.next_id();
+        let ev = Event { id, tick, kind };
+        World::apply(&mut self.entities, &self.vocabulary, &ev);
+        self.history.append(ev);
         if tick > self.tick {
             self.tick = tick;
         }
@@ -149,19 +155,28 @@ impl World {
     // The only writer
     // -----------------------------------------------------------
 
-    fn fold(&mut self, event: &Event) {
+    /// Fold one event into the entities. It reads the vocabulary and
+    /// writes the entities, and nothing else, so the history and the
+    /// tick stay with the caller. The Lean proofs of replay and
+    /// rewind rest on that: they hold for every `apply` with this
+    /// signature.
+    fn apply(
+        entities: &mut BTreeMap<EntityId, Entity>,
+        vocabulary: &FactVocabulary,
+        event: &Event,
+    ) {
         match &event.kind {
             EventKind::EntityCreated {
                 id,
                 entity_type,
                 name,
             } => {
-                self.entities
+                entities
                     .entry(*id)
                     .or_insert_with(|| Entity::new(*id, *entity_type, name, event.tick));
             }
             EventKind::EntityDestroyed { id } => {
-                if let Some(entity) = self.entities.get_mut(id) {
+                if let Some(entity) = entities.get_mut(id) {
                     // The entity stays. The history names it, and
                     // other facts point at it. Only the span
                     // closes, and the facts stay, because a grudge
@@ -178,8 +193,8 @@ impl World {
                 value,
                 linked_to,
             } => {
-                let wide = self.single_target(name);
-                if let Some(row) = self.entities.get_mut(entity) {
+                let wide = single_target(vocabulary, name);
+                if let Some(row) = entities.get_mut(entity) {
                     if wide {
                         row.facts.retain(|f| f.name != *name);
                     } else {
@@ -200,7 +215,7 @@ impl World {
                 to,
                 ..
             } => {
-                if let Some(row) = self.entities.get_mut(entity) {
+                if let Some(row) = entities.get_mut(entity) {
                     if let Some(fact) = row.facts.iter_mut().find(|f| f.same_slot(name, *linked_to))
                     {
                         // A new value is a new fact (spec decision
@@ -215,19 +230,10 @@ impl World {
                 name,
                 linked_to,
             } => {
-                if let Some(row) = self.entities.get_mut(entity) {
+                if let Some(row) = entities.get_mut(entity) {
                     row.facts.retain(|f| !f.same_slot(name, *linked_to));
                 }
             }
-        }
-    }
-
-    /// Does this name allow one target at a time? An undeclared
-    /// name does not, so an unknown name closes its own slot only.
-    fn single_target(&self, name: &str) -> bool {
-        match self.vocabulary.rules(name) {
-            Some(FactRules::Linked { targets, .. }) => targets.is_single(),
-            _ => false,
         }
     }
 
@@ -243,21 +249,31 @@ impl World {
     /// never stop an old history from replaying. The migration
     /// rules hold the other half of that promise: the rules of a
     /// declared name never change (see `migrate`).
+    #[cfg_attr(charon, verify::start_from)]
     pub fn replay(vocabulary: FactVocabulary, history: &EventHistory) -> World {
-        let mut world = World::new(vocabulary);
-        for event in history.iter() {
-            world.history.push(event.tick, event.kind.clone());
-            world.fold(event);
-            if event.tick > world.tick {
-                world.tick = event.tick;
-            }
+        let mut out = World::new(vocabulary);
+        let events = history.events();
+        let mut i = 0;
+        while i < events.len() {
+            out.replay_one(&events[i]);
+            i += 1;
         }
-        world
+        out
+    }
+
+    /// One step of `replay`: the same three writes as `commit`.
+    fn replay_one(&mut self, ev: &Event) {
+        self.history.push(ev.tick, ev.kind.clone());
+        World::apply(&mut self.entities, &self.vocabulary, ev);
+        if ev.tick > self.tick {
+            self.tick = ev.tick;
+        }
     }
 
     /// Cut the history and build the state again. This is the
     /// undo of a child, and it costs nothing, because `apply`
     /// builds the state from nothing.
+    #[cfg_attr(charon, verify::start_from)]
     pub fn rewind(&mut self, after: EventId) {
         self.history.truncate(after);
         let history = std::mem::take(&mut self.history);
@@ -400,5 +416,14 @@ impl World {
             Some(FactRules::Linked { targets, .. }) => Some(*targets),
             _ => None,
         }
+    }
+}
+
+/// Does this name allow one target at a time? An undeclared name
+/// does not, so an unknown name closes its own slot only.
+fn single_target(vocabulary: &FactVocabulary, name: &str) -> bool {
+    match vocabulary.rules(name) {
+        Some(FactRules::Linked { targets, .. }) => targets.is_single(),
+        _ => false,
     }
 }

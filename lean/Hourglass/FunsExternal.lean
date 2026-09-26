@@ -86,3 +86,92 @@ def names.Names.keys {V : Type} (m : names.Names V) :
   if h : (Std.ExtTreeMap.keys m).length ≤ Usize.max then
     ok (alloc.vec.Vec.from (Std.ExtTreeMap.keys m) h)
   else fail .panic
+
+
+/-- `Tick > Tick`, by the derive of `Tick`: `>` on u64. -/
+def time.Tick.Insts.CoreCmpPartialOrdTick.gt
+  (a b : time.Tick) : Result Bool :=
+  ok (a > b)
+
+/-- `Option::clone` clones the content. -/
+@[rust_fun
+  "core::option::{core::clone::Clone<core::option::Option<@T>>}::clone"]
+def core.option.Option.Insts.CoreCloneClone.clone
+  {T : Type} (cloneCloneInst : core.clone.Clone T) :
+  Option T → Result (Option T)
+  | none => ok none
+  | some x => do
+    let y ← cloneCloneInst.clone x
+    ok (some y)
+
+/-- `std::mem::take` gives the old value and leaves the default. -/
+@[rust_fun "core::mem::take"]
+def core.mem.take
+  {T : Type} (defaultDefaultInst : core.default.Default T) (x : T) :
+  Result (T × T) := do
+  let d ← defaultDefaultInst.default
+  ok (x, d)
+
+/-- `Vec::default` is the empty vector. -/
+@[rust_fun
+  "alloc::vec::{core::default::Default<alloc::vec::Vec<@T>>}::default"]
+def alloc.vec.Vec.Insts.CoreDefaultDefault.default
+  (T : Type) : Result (alloc.vec.Vec T) :=
+  ok (alloc.vec.Vec.new T)
+
+/-- `Vec::truncate(n)` keeps the first `n` items. A vector with `n`
+    items or fewer stays the same. -/
+@[rust_fun "alloc::vec::{alloc::vec::Vec<@T>}::truncate"]
+def alloc.vec.Vec.truncate
+  {T : Type} (_A : Type) (v : alloc.vec.Vec T) (n : Std.Usize) :
+  Result (alloc.vec.Vec T) :=
+  ok (alloc.vec.Vec.from (v.val.take n.val)
+    (by have := v.property; simp only [List.length_take]; omega))
+
+/-- `Names::clone` gives an equal map. -/
+def names.Names.Insts.CoreCloneClone.clone
+  {V : Type} (_corecloneCloneInst : core.clone.Clone V) (m : names.Names V) :
+  Result (names.Names V) :=
+  ok m
+
+/-- `BTreeMap::new` and `BTreeMap::clone`, on the placeholder model of
+    TypesExternal.lean. No law reads this map. -/
+@[rust_fun
+  "alloc::collections::btree::map::{alloc::collections::btree::map::BTreeMap<@K, @V, alloc::alloc::Global>}::new"]
+def alloc.collections.btree.map.BTreeMapKVGlobal.new
+  (K : Type) (V : Type) :
+  Result (alloc.collections.btree.map.BTreeMap K V Global) :=
+  ok ([] : List (K × V))
+
+@[rust_fun
+  "alloc::collections::btree::map::{core::clone::Clone<alloc::collections::btree::map::BTreeMap<@K, @V, @A>>}::clone"]
+def alloc.collections.btree.map.BTreeMap.Insts.CoreCloneClone.clone
+  {K : Type} {V : Type} {A : Type} (_corecloneCloneInst : core.clone.Clone K)
+  (_corecloneCloneInst1 : core.clone.Clone V) (_coreallocAllocatorCloneInst :
+  core.alloc.AllocatorClone A) (m : alloc.collections.btree.map.BTreeMap K V A) :
+  Result (alloc.collections.btree.map.BTreeMap K V A) :=
+  ok m
+
+/-! ## Two crate functions, opaque on purpose
+
+The rung 3 laws (World.lean) hold for every `apply` and every
+`validate`. So these two stay axioms: functions with no body. Each
+one only names a function of the right type, and every such type
+holds a function, so the two axioms cannot make the logic
+inconsistent. Trust.lean pins exactly which laws use them. -/
+
+/-- [hourglass::validate::validate]:
+    Source: 'src/validate.rs', lines 24:0-71:1
+    Visibility: public -/
+axiom validate.validate
+  :
+  world.World → time.Tick → event.EventKind → Result (alloc.vec.Vec
+    reject.Rejection)
+
+/-- [hourglass::world::{hourglass::world::World}::apply]:
+    Source: 'src/world.rs', lines 161:4-236:5 -/
+axiom world.World.apply
+  :
+  alloc.collections.btree.map.BTreeMap time.EntityId entity.Entity Global →
+    fact.FactVocabulary → event.Event → Result
+    (alloc.collections.btree.map.BTreeMap time.EntityId entity.Entity Global)

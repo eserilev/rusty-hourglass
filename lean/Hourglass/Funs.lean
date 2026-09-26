@@ -24,6 +24,158 @@ noncomputable section
 
 namespace hourglass
 
+/-- Trait implementation: [alloc::alloc::{impl core::alloc::AllocatorClone for alloc::alloc::Global}]
+    Source: '/rustc/library/alloc/src/alloc.rs', lines 62:0-62:50
+    Name pattern: [core::alloc::AllocatorClone<alloc::alloc::Global>] -/
+@[reducible, rust_trait_impl
+  "core::alloc::AllocatorClone<alloc::alloc::Global>"]
+def alloc.alloc.Global.Insts.CoreAllocAllocatorClone :
+  core.alloc.AllocatorClone Global := {
+  cloneCloneInst := core.core.clone.CloneGlobal
+}
+
+/-- [hourglass::entity::{impl core::clone::Clone for hourglass::entity::EntityType}::clone]:
+    Source: 'src/entity.rs', lines 18:9-18:14
+    Visibility: public -/
+def entity.EntityType.Insts.CoreCloneClone.clone
+  (self : entity.EntityType) : Result entity.EntityType := do
+  ok self
+
+/-- Trait implementation: [hourglass::entity::{impl core::clone::Clone for hourglass::entity::EntityType}]
+    Source: 'src/entity.rs', lines 18:9-18:14 -/
+@[reducible]
+def entity.EntityType.Insts.CoreCloneClone : core.clone.Clone entity.EntityType
+  := {
+  clone := entity.EntityType.Insts.CoreCloneClone.clone
+}
+
+/-- [hourglass::time::{impl core::clone::Clone for hourglass::time::EntityId}::clone]:
+    Source: 'src/time.rs', lines 13:4-13:9
+    Visibility: public -/
+def time.EntityId.Insts.CoreCloneClone.clone
+  (self : time.EntityId) : Result time.EntityId := do
+  ok self
+
+/-- Trait implementation: [hourglass::time::{impl core::clone::Clone for hourglass::time::EntityId}]
+    Source: 'src/time.rs', lines 13:4-13:9 -/
+@[reducible]
+def time.EntityId.Insts.CoreCloneClone : core.clone.Clone time.EntityId := {
+  clone := time.EntityId.Insts.CoreCloneClone.clone
+}
+
+/-- [hourglass::event::{impl core::clone::Clone for hourglass::event::EventKind}::clone]:
+    Source: 'src/event.rs', lines 30:9-30:14
+    Visibility: public -/
+def event.EventKind.Insts.CoreCloneClone.clone
+  (self : event.EventKind) : Result event.EventKind := do
+  match self with
+  | event.EventKind.EntityCreated __self_0 __self_1 __self_2 =>
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
+    let et ← entity.EntityType.Insts.CoreCloneClone.clone __self_1
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_2
+    ok (event.EventKind.EntityCreated ei et s)
+  | event.EventKind.EntityDestroyed __self_0 =>
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
+    ok (event.EventKind.EntityDestroyed ei)
+  | event.EventKind.FactStart __self_0 __self_1 __self_2 __self_3 =>
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_1
+    let o ←
+      core.option.Option.Insts.CoreCloneClone.clone core.clone.CloneI64
+        __self_2
+    let o1 ←
+      core.option.Option.Insts.CoreCloneClone.clone
+        time.EntityId.Insts.CoreCloneClone __self_3
+    ok (event.EventKind.FactStart ei s o o1)
+  | event.EventKind.FactUpdate __self_0 __self_1 __self_2 __self_3 __self_4 =>
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_1
+    let o ←
+      core.option.Option.Insts.CoreCloneClone.clone
+        time.EntityId.Insts.CoreCloneClone __self_2
+    let i ← lift (core.clone.impls.CloneI64.clone __self_3)
+    let i1 ← lift (core.clone.impls.CloneI64.clone __self_4)
+    ok (event.EventKind.FactUpdate ei s o i i1)
+  | event.EventKind.FactEnd __self_0 __self_1 __self_2 =>
+    let ei ← time.EntityId.Insts.CoreCloneClone.clone __self_0
+    let s ← alloc.string.String.Insts.CoreCloneClone.clone __self_1
+    let o ←
+      core.option.Option.Insts.CoreCloneClone.clone
+        time.EntityId.Insts.CoreCloneClone __self_2
+    ok (event.EventKind.FactEnd ei s o)
+
+/-- [hourglass::event::{impl core::default::Default for hourglass::event::EventHistory}::default]:
+    Source: 'src/event.rs', lines 100:23-100:30
+    Visibility: public -/
+def event.EventHistory.Insts.CoreDefaultDefault.default
+  : Result event.EventHistory := do
+  let v ← alloc.vec.Vec.Insts.CoreDefaultDefault.default event.Event
+  ok v
+
+/-- Trait implementation: [hourglass::event::{impl core::default::Default for hourglass::event::EventHistory}]
+    Source: 'src/event.rs', lines 100:23-100:30 -/
+@[reducible]
+def event.EventHistory.Insts.CoreDefaultDefault : core.default.Default
+  event.EventHistory := {
+  default := event.EventHistory.Insts.CoreDefaultDefault.default
+}
+
+/-- [hourglass::event::{hourglass::event::EventHistory}::new]:
+    Source: 'src/event.rs', lines 105:4-107:5
+    Visibility: public -/
+def event.EventHistory.new : Result event.EventHistory := do
+  ok (alloc.vec.Vec.new event.Event)
+
+/-- [hourglass::event::{hourglass::event::EventHistory}::next_id]:
+    Source: 'src/event.rs', lines 137:4-139:5
+    Visibility: public -/
+def event.EventHistory.next_id
+  (self : event.EventHistory) : Result time.EventId := do
+  let i := alloc.vec.Vec.len self
+  let i1 ← lift (UScalar.cast .U64 i)
+  ok i1
+
+/-- [hourglass::event::{hourglass::event::EventHistory}::push]:
+    Source: 'src/event.rs', lines 110:4-114:5
+    Visibility: public -/
+def event.EventHistory.push
+  (self : event.EventHistory) (tick : time.Tick) (kind : event.EventKind) :
+  Result (time.EventId × event.EventHistory)
+  := do
+  let id ← event.EventHistory.next_id self
+  let v ← alloc.vec.Vec.push self ({ id, tick, kind } : event.Event)
+  ok (id, v)
+
+/-- [hourglass::event::{hourglass::event::EventHistory}::append]:
+    Source: 'src/event.rs', lines 118:4-120:5 -/
+def event.EventHistory.append
+  (self : event.EventHistory) (ev : event.Event) :
+  Result event.EventHistory
+  := do
+  let v ← alloc.vec.Vec.push self ev
+  ok v
+
+/-- [hourglass::event::{hourglass::event::EventHistory}::events]:
+    Source: 'src/event.rs', lines 123:4-125:5 -/
+def event.EventHistory.events
+  (self : event.EventHistory) : Result (Slice event.Event) := do
+  ok (alloc.vec.Vec.deref self)
+
+/-- [hourglass::event::{hourglass::event::EventHistory}::truncate]:
+    Source: 'src/event.rs', lines 160:4-165:5
+    Visibility: public -/
+def event.EventHistory.truncate
+  (self : event.EventHistory) (after : time.EventId) :
+  Result event.EventHistory
+  := do
+  let i ← lift (UScalar.cast .Usize after)
+  let keep ← lift (core.num.Usize.saturating_add i 1#usize)
+  let i1 := alloc.vec.Vec.len self
+  if keep < i1
+  then let v ← alloc.vec.Vec.truncate Global self keep
+       ok v
+  else ok self
+
 /-- [hourglass::fact::{hourglass::fact::Band}::holds]:
     Source: 'src/fact.rs', lines 49:4-51:5
     Visibility: public -/
@@ -88,6 +240,13 @@ def fact.Direction.can_restart (self : fact.Direction) : Result Bool := do
   | fact.Direction.Down => ok false
   | fact.Direction.Free => ok true
 
+/-- [hourglass::fact::{impl core::clone::Clone for hourglass::fact::Shape}::clone]:
+    Source: 'src/fact.rs', lines 140:9-140:14
+    Visibility: public -/
+def fact.Shape.Insts.CoreCloneClone.clone
+  (self : fact.Shape) : Result fact.Shape := do
+  ok self
+
 /-- [hourglass::fact::{hourglass::fact::Shape}::moving]:
     Source: 'src/fact.rs', lines 168:4-173:5
     Visibility: public -/
@@ -121,6 +280,13 @@ def fact.Shape.numeric (self : fact.Shape) : Result Bool := do
   | fact.Shape.Flag _ => ok false
   | fact.Shape.Number _ _ => ok true
 
+/-- [hourglass::fact::{impl core::clone::Clone for hourglass::fact::Count}::clone]:
+    Source: 'src/fact.rs', lines 206:9-206:14
+    Visibility: public -/
+def fact.Count.Insts.CoreCloneClone.clone
+  (self : fact.Count) : Result fact.Count := do
+  ok self
+
 /-- [hourglass::fact::{hourglass::fact::Count}::limit]:
     Source: 'src/fact.rs', lines 216:4-222:5
     Visibility: public -/
@@ -138,6 +304,33 @@ def fact.Count.is_single (self : fact.Count) : Result Bool := do
   core.option.Option.Insts.CoreCmpPartialEqOption.eq core.cmp.PartialEqU16 o
     (some 1#u16)
 
+/-- [hourglass::fact::{impl core::clone::Clone for hourglass::fact::FactRules}::clone]:
+    Source: 'src/fact.rs', lines 235:9-235:14
+    Visibility: public -/
+def fact.FactRules.Insts.CoreCloneClone.clone
+  (self : fact.FactRules) : Result fact.FactRules := do
+  match self with
+  | fact.FactRules.Solo __self_0 =>
+    let s ← fact.Shape.Insts.CoreCloneClone.clone __self_0
+    ok (fact.FactRules.Solo s)
+  | fact.FactRules.Linked __self_0 __self_1 __self_2 __self_3 =>
+    let s ← fact.Shape.Insts.CoreCloneClone.clone __self_0
+    let c ← fact.Count.Insts.CoreCloneClone.clone __self_1
+    let c1 ← fact.Count.Insts.CoreCloneClone.clone __self_2
+    let bm ←
+      alloc.collections.btree.map.BTreeMap.Insts.CoreCloneClone.clone
+        entity.EntityType.Insts.CoreCloneClone (core.clone.CloneallocvecVec
+        entity.EntityType.Insts.CoreCloneClone)
+        alloc.alloc.Global.Insts.CoreAllocAllocatorClone __self_3
+    ok (fact.FactRules.Linked s c c1 bm)
+
+/-- Trait implementation: [hourglass::fact::{impl core::clone::Clone for hourglass::fact::FactRules}]
+    Source: 'src/fact.rs', lines 235:9-235:14 -/
+@[reducible]
+def fact.FactRules.Insts.CoreCloneClone : core.clone.Clone fact.FactRules := {
+  clone := fact.FactRules.Insts.CoreCloneClone.clone
+}
+
 /-- [hourglass::fact::{hourglass::fact::FactRules}::shape]:
     Source: 'src/fact.rs', lines 279:4-284:5
     Visibility: public -/
@@ -153,6 +346,17 @@ def fact.FactRules.takes_target (self : fact.FactRules) : Result Bool := do
   match self with
   | fact.FactRules.Solo _ => ok false
   | fact.FactRules.Linked _ _ _ _ => ok true
+
+/-- [hourglass::fact::{impl core::clone::Clone for hourglass::fact::FactVocabulary}::clone]:
+    Source: 'src/fact.rs', lines 367:9-367:14
+    Visibility: public -/
+def fact.FactVocabulary.Insts.CoreCloneClone.clone
+  (self : fact.FactVocabulary) : Result fact.FactVocabulary := do
+  let i ← lift (core.clone.impls.CloneU32.clone self.version)
+  let n ←
+    names.Names.Insts.CoreCloneClone.clone fact.FactRules.Insts.CoreCloneClone
+      self.names
+  ok { version := i, names := n }
 
 /-- [hourglass::fact::{hourglass::fact::FactVocabulary}::rules_key]:
     Source: 'src/fact.rs', lines 401:4-403:5 -/
@@ -474,5 +678,100 @@ def time.TimeSpan.sound (self : time.TimeSpan) : Result Bool := do
   match self.until with
   | none => ok true
   | some «end» => time.Tick.Insts.CoreCmpPartialOrdTick.ge «end» self.from
+
+/-- [hourglass::world::{hourglass::world::World}::new]:
+    Source: 'src/world.rs', lines 67:4-74:5
+    Visibility: public -/
+def world.World.new
+  (vocabulary : fact.FactVocabulary) : Result world.World := do
+  let bm ←
+    alloc.collections.btree.map.BTreeMapKVGlobal.new time.EntityId
+      entity.Entity
+  let eh ← event.EventHistory.new
+  ok { tick := 0#u64, vocabulary, entities := bm, history := eh }
+
+/-- [hourglass::world::{hourglass::world::World}::commit]:
+    Source: 'src/world.rs', lines 141:4-152:5
+    Visibility: public -/
+def world.World.commit
+  (self : world.World) (tick : time.Tick) (kind : event.EventKind) :
+  Result (time.EventId × world.World)
+  := do
+  let id ← event.EventHistory.next_id self.history
+  let bm ← world.World.apply self.entities self.vocabulary { id, tick, kind }
+  let eh ← event.EventHistory.append self.history { id, tick, kind }
+  let b ← time.Tick.Insts.CoreCmpPartialOrdTick.gt tick self.tick
+  if b
+  then ok (id, { self with tick, entities := bm, history := eh })
+  else ok (id, { self with entities := bm, history := eh })
+
+/-- [hourglass::world::{hourglass::world::World}::propose]:
+    Source: 'src/world.rs', lines 116:4-122:5
+    Visibility: public -/
+def world.World.propose
+  (self : world.World) (tick : time.Tick) (kind : event.EventKind) :
+  Result ((core.result.Result time.EventId (alloc.vec.Vec reject.Rejection)) ×
+    world.World)
+  := do
+  let faults ← validate.validate self tick kind
+  let b ← alloc.vec.Vec.is_empty Global faults
+  if b
+  then
+    let (ei, self1) ← world.World.commit self tick kind
+    ok (core.result.Result.Ok ei, self1)
+  else ok (core.result.Result.Err faults, self)
+
+/-- [hourglass::world::{hourglass::world::World}::replay_one]:
+    Source: 'src/world.rs', lines 265:4-271:5 -/
+def world.World.replay_one
+  (self : world.World) (ev : event.Event) : Result world.World := do
+  let ek ← event.EventKind.Insts.CoreCloneClone.clone ev.kind
+  let (_, eh) ← event.EventHistory.push self.history ev.tick ek
+  let bm ← world.World.apply self.entities self.vocabulary ev
+  let b ← time.Tick.Insts.CoreCmpPartialOrdTick.gt ev.tick self.tick
+  if b
+  then ok { self with tick := ev.tick, entities := bm, history := eh }
+  else ok { self with entities := bm, history := eh }
+
+/-- [hourglass::world::{hourglass::world::World}::replay]: loop 0:
+    Source: 'src/world.rs', lines 257:8-260:9
+    Visibility: public -/
+@[rust_loop]
+def world.World.replay_loop
+  (out : world.World) (events : Slice event.Event) (i : Std.Usize) :
+  Result world.World
+  := do
+  let i1 := Slice.len events
+  if i < i1
+  then
+    let e ← Slice.index_usize events i
+    let out1 ← world.World.replay_one out e
+    let i2 ← i + 1#usize
+    world.World.replay_loop out1 events i2
+  else ok out
+partial_fixpoint
+
+/-- [hourglass::world::{hourglass::world::World}::replay]:
+    Source: 'src/world.rs', lines 253:4-262:5
+    Visibility: public -/
+def world.World.replay
+  (vocabulary : fact.FactVocabulary) (history : event.EventHistory) :
+  Result world.World
+  := do
+  let out ← world.World.new vocabulary
+  let events ← event.EventHistory.events history
+  world.World.replay_loop out events 0#usize
+
+/-- [hourglass::world::{hourglass::world::World}::rewind]:
+    Source: 'src/world.rs', lines 277:4-282:5
+    Visibility: public -/
+def world.World.rewind
+  (self : world.World) (after : time.EventId) : Result world.World := do
+  let eh ← event.EventHistory.truncate self.history after
+  let (history, _) ←
+    core.mem.take event.EventHistory.Insts.CoreDefaultDefault eh
+  let vocabulary ←
+    fact.FactVocabulary.Insts.CoreCloneClone.clone self.vocabulary
+  world.World.replay vocabulary history
 
 end hourglass

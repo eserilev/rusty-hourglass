@@ -113,6 +113,17 @@ impl EventHistory {
         id
     }
 
+    /// Add an event that already carries the next id. `World::commit`
+    /// builds the event, folds it, and then adds it here.
+    pub(crate) fn append(&mut self, ev: Event) {
+        self.0.push(ev);
+    }
+
+    /// The events, in order, for a walk by index.
+    pub(crate) fn events(&self) -> &[Event] {
+        &self.0
+    }
+
     pub fn get(&self, id: EventId) -> Option<&Event> {
         self.0.get(id.0 as usize).filter(|e| e.id == id)
     }

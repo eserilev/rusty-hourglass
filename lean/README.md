@@ -1,8 +1,9 @@
 # The Lean proofs
 
 Aeneas translates the Rust code of the crate into pure Lean
-functions. The theorems in `Hourglass/Laws.lean` and
-`Hourglass/Merge.lean` are about those functions. A theorem holds
+functions. The theorems in `Hourglass/Laws.lean`,
+`Hourglass/Merge.lean`, and `Hourglass/World.lean` are about those
+functions. A theorem holds
 for every input, with no bound. Kani checks the rung 1 laws in
 `src/proofs.rs`, but only up to its bounds.
 
@@ -55,6 +56,24 @@ The laws have three conditions:
 3. **The two records together hold at most `usize::MAX` names.** A
    larger record does not fit in memory.
 
+## What is proved: rung 3, the world and its history
+
+| Theorem | The law |
+|---|---|
+| `replay_is_the_world` | A world that commits built from an empty world is exactly the replay of its own history: the same entities, the same history, and the same tick. |
+| `rewind_is_exact` | A rewind to the last event of an earlier world gives that world back, as if the later events never happened. |
+| `propose_ok` | `propose` lands an event only when `validate` finds no fault, and then it is exactly `commit`. |
+| `propose_err` | A refused proposal changes nothing, and it gives the faults that `validate` found. |
+| `reach_propose` | So a world that any mix of proposals and commits built also replays exactly. |
+| `replay_one_of_commit` | One step of replay on the event of a commit gives the world of that commit. |
+
+These laws hold for every `apply` and every `validate`. They are
+about the discipline of the history, not about the rules inside
+`apply` and `validate`. So those two functions stay opaque: Aeneas
+sees only their types. `apply` receives only the entity map and the
+vocabulary, so it cannot touch the history or the tick. The laws
+rest on that signature.
+
 ## What you trust
 
 1. **Charon and Aeneas.** A bug in the translation makes the Lean
@@ -63,8 +82,11 @@ The laws have three conditions:
    `Hourglass/TypesExternal.lean`.** Aeneas does not translate std.
    These files give a body to each std item that the verified code
    uses. Read them before you trust a theorem. They are short.
-   - `Option` equality, `<` and `>=` on `Tick`, `String::clone`, and
-     `Vec::is_empty`.
+   - `Option` equality and clone, `<`, `>=`, and `>` on `Tick`,
+     `String::clone`, `Vec::is_empty`, `Vec::truncate`,
+     `Vec::default`, and `std::mem::take`.
+   - The map inside `FactRules` and the entity map of the world. No
+     law reads them, so their model is a plain list.
    - `Names<V>` (`src/names.rs`), the one map with a name for its
      key. Its model is `Std.ExtTreeMap String V compare`, the
      verified tree map of the Lean standard library. Each operation
@@ -76,7 +98,10 @@ The laws have three conditions:
 4. **The three standard axioms of Lean.** `Hourglass/Trust.lean`
    pins the axioms of each theorem with `#guard_msgs`. A `sorry` or
    a new axiom fails the build. The model files hold definitions
-   only, and no axioms.
+   only, with two exceptions: the crate functions `apply` and
+   `validate`. They are axioms with no body, and only the rung 3
+   pins name them. An axiom that only names a function of an
+   inhabited type cannot make the logic inconsistent.
 
 ## How to run
 
@@ -130,12 +155,24 @@ Three facts about rung 2 help the next rungs:
    `merge_name_eq` says that `merge_name` answers `stepOut`. The laws
    are about the mirrors, so they need no monad.
 
-### Rung 3: the world
+### Rung 3: the world (BUILT)
 
-Prove that `replay` is deterministic, that `rewind` equals a replay
-of the cut history, and that `propose` accepts only events that pass
-`validate`. The code needs changes first. A full run of the crate
-shows five groups of code that Aeneas does not translate yet:
+Two Rust changes made the laws possible:
+
+1. **`apply` receives the entity map, not the world.** Before, `fold`
+   took `&mut self`. The proof then had no way to rule out a change
+   to the history by an opaque `fold`.
+2. **A local never takes the name of a module.** Aeneas writes one
+   name for the local `event` and the module `event`. The Lean then
+   breaks. `commit` and `replay` use `ev` and `out`.
+
+### Rung 4: the rules inside `apply` and `validate`
+
+For example: one fact per slot, no cycle in `located_in`, and every
+event in a history passes `validate` at its time. These laws read
+the bodies of `apply` and `validate`, so the code needs changes
+first. A full run of the crate shows five groups of code that Aeneas
+does not translate yet:
 
 | Group | Where | The fix |
 |---|---|---|
@@ -145,14 +182,16 @@ shows five groups of code that Aeneas does not translate yet:
 | A return inside a nested loop | `verify::same_state`, `verify::sound` | Move the inner loop into a helper function that returns a flag. |
 | A borrow shape that Aeneas does not support yet | `validate.rs` lines 96 to 112, 131, 132, 215, and 422 to 449; `memory::writes` | Read each one. Most are a `&mut` borrow held across a call. |
 
-The serde derives do not block anything. The extraction excludes
-them by pattern, with no change to the code.
+The entity map also needs a wrapper like `Names`, keyed by
+`EntityId`.
 
-## Two issues for upstream
+## Three issues for upstream
 
 1. Without `--duplicate-defaulted-methods`, Aeneas passes a whole
    `PartialOrd` instance to `core.cmp.PartialOrd.lt.default`, but
    the Lean library takes only the `partial_cmp` function. The
    generated Lean does not build. `Tick < Tick` shows it.
-2. Several spots in rung 3 fail with "Internal error: please file
-   an issue". File them with a minimal case when rung 3 starts.
+2. Several spots in rung 4 fail with "Internal error: please file
+   an issue". File them with a minimal case when rung 4 starts.
+3. A local variable with the name of a module (for example `event`)
+   hides the module in the generated Lean.

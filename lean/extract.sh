@@ -33,6 +33,10 @@ args+=(
   # The name map is a model in Lean (Hourglass/TypesExternal.lean), so
   # Aeneas sees only the signatures of its operations.
   --opaque 'hourglass::names'
+  # The rung 3 laws hold for every `apply` and every `validate`, so
+  # Aeneas sees only their signatures.
+  --opaque 'hourglass::world::_::apply'
+  --opaque 'hourglass::validate::validate'
 )
 
 (cd "$crate" && RUSTFLAGS="--cfg charon" "$AENEAS/charon/bin/charon" cargo "${args[@]}" --dest-file "$work/hourglass.llbc")
