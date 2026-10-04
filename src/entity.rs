@@ -10,7 +10,7 @@
 //! it, and other facts point at it. Only its `existence` closes.
 
 use crate::fact::{is_located_in, Fact};
-use crate::time::{EntityId, Tick, TimeSpan};
+use crate::time::{EntityId, EventId, Tick, TimeSpan};
 use serde::{Deserialize, Serialize};
 
 /// What an entity is. A closed list, so a rule can refuse "the
@@ -52,17 +52,27 @@ pub struct Entity {
     pub name: String,
     /// Started, and maybe ended. One span, ever.
     pub existence: TimeSpan,
+    /// The event that created it. A caller needs no walk over the
+    /// history to find it.
+    pub created: EventId,
     /// Everything true of it right now, including where it sits.
     pub facts: Vec<Fact>,
 }
 
 impl Entity {
-    pub fn new(id: EntityId, entity_type: EntityType, name: &str, from: Tick) -> Self {
+    pub fn new(
+        id: EntityId,
+        entity_type: EntityType,
+        name: &str,
+        from: Tick,
+        created: EventId,
+    ) -> Self {
         Entity {
             id,
             entity_type,
             name: name.to_string(),
             existence: TimeSpan::open(from),
+            created,
             facts: Vec::new(),
         }
     }

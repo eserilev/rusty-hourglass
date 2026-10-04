@@ -580,7 +580,7 @@ theorem every_proposed_world_targets (v : FactVocabulary) (w0 w : World)
     (h0 : World.new v = ok w0) (hr : ReachP w0 w) :
     targetsOk w.vocabulary w.entities ∧ allFacts (linkP w.vocabulary) w.entities := by
   apply reachP_targets hr
-  simp only [World.new, ids.Ids.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
+  simp only [World.new, ids.Ids.new, names.Names.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
   subst h0
   exact ⟨fun k _ _ _ _ _ _ _ hk => by simp at hk, fun k _ _ hk => by simp at hk⟩
 
@@ -1194,7 +1194,7 @@ theorem every_proposed_world_holders (v : FactVocabulary) (w0 w : World)
     (h0 : World.new v = ok w0) (hr : ReachP w0 w) :
     holdersOk w.vocabulary w.entities := by
   apply (reachP_holders hr _).1
-  simp only [World.new, ids.Ids.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
+  simp only [World.new, ids.Ids.new, names.Names.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
   subst h0
   refine ⟨fun n t _ _ _ _ _ _ _ => by
     simp [holdersCount, Std.ExtTreeMap.keys_eq_nil_iff.2 rfl], fun k _ hk => by simp at hk⟩

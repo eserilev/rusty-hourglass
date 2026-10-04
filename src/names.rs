@@ -70,6 +70,14 @@ impl<V> Names<V> {
         self.0.remove(name);
     }
 
+    /// Take the value of the name out of the map, for the verified
+    /// code. It changes a value this way: take it, change it, and
+    /// insert it.
+    #[allow(clippy::ptr_arg)]
+    pub(crate) fn take_key(&mut self, name: &String) -> Option<V> {
+        self.0.remove(name)
+    }
+
     pub(crate) fn len(&self) -> usize {
         self.0.len()
     }
@@ -101,6 +109,7 @@ mod tests {
         Insert(String, i64),
         RemoveKey(String),
         Remove(String),
+        TakeKey(String),
     }
 
     /// Short names from a small alphabet collide often. Free strings
@@ -114,6 +123,7 @@ mod tests {
             (name(), any::<i64>()).prop_map(|(k, v)| Op::Insert(k, v)),
             name().prop_map(Op::RemoveKey),
             name().prop_map(Op::Remove),
+            name().prop_map(Op::TakeKey),
         ]
     }
 
@@ -145,6 +155,13 @@ mod tests {
                     }
                     Op::Remove(k) => {
                         m.remove(&k);
+                        model.retain(|(x, _)| *x != k);
+                    }
+                    Op::TakeKey(k) => {
+                        // `take_key`: the value of the name, and then
+                        // the map without it.
+                        let want = model.iter().find(|(x, _)| *x == k).map(|(_, v)| *v);
+                        prop_assert_eq!(m.take_key(&k), want);
                         model.retain(|(x, _)| *x != k);
                     }
                 }

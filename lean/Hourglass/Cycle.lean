@@ -233,7 +233,7 @@ def acyc (m : ids.Ids Entity) : Prop :=
     steps from `at` meets the entity. -/
 theorem would_cycle_loop_none (w : World) (who : time.EntityId) (n : Usize) :
     ∀ (k : Nat) (at' : time.EntityId) (hops : Usize), n.val - hops.val = k →
-      world.World.would_cycle_loop w.tick w.vocabulary w.entities w.history who n at' hops = ok none →
+      world.World.would_cycle_loop w.tick w.vocabulary w.entities w.named w.history who n at' hops = ok none →
       ∀ j ≤ k, walk w.entities j at' ≠ some who := by
   intro k
   induction k with
@@ -747,10 +747,10 @@ theorem every_proposed_world_acyclic (v : FactVocabulary) (w0 w : World)
     (h0 : World.new v = ok w0) (hv : world.single_target v "located_in" = ok true)
     (hr : ReachP w0 w) : acyc w.entities := by
   have hw0 : w0.vocabulary = v := by
-    simp only [World.new, ids.Ids.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
+    simp only [World.new, ids.Ids.new, names.Names.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
     subst h0; rfl
   apply (reachP_acyc hr (by rw [hw0]; exact hv) _).1
-  simp only [World.new, ids.Ids.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
+  simp only [World.new, ids.Ids.new, names.Names.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
   subst h0
   refine ⟨fun a d _ hw => ?_, fun k e n hk => by simp at hk⟩
   cases d with

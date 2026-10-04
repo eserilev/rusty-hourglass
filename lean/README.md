@@ -5,8 +5,9 @@ functions. The theorems in `Hourglass/Laws.lean`,
 `Hourglass/Merge.lean`, `Hourglass/World.lean`,
 `Hourglass/Apply.lean`, `Hourglass/Gate.lean`,
 `Hourglass/Direction.lean`, `Hourglass/Counts.lean`,
-`Hourglass/Cycle.lean`, `Hourglass/Referee.lean`, and
-`Hourglass/Batch.lean` are about those functions. A theorem holds
+`Hourglass/Cycle.lean`, `Hourglass/Referee.lean`,
+`Hourglass/Batch.lean`, and `Hourglass/Index.lean` are about those
+functions. A theorem holds
 for every input, with no bound. Kani checks the rung 1 laws in
 `src/proofs.rs`, but only up to its bounds.
 
@@ -154,7 +155,7 @@ other rules for the name.
 | Theorem | The law |
 |---|---|
 | `every_proposed_world_verifies` | In every world that proposals build from an empty world, `verify` answers `true`. The referee folds the history a second time with its own writer and checks the twelve invariants of the spec. |
-| `same_state_true` | The state equals the second fold of the history (invariant 1), and the ticks never fall (invariant 12). |
+| `same_state_true` | The state equals the second fold of the history (invariant 1), with the event that created each entity, and the ticks never fall (invariant 12). |
 | `sound_true` | Invariants 2 to 11 hold. |
 | `refold_step` | The writer of the referee and `apply` agree on each event. |
 | `apply_shape` | Every row after `apply` comes from the old row at its key, or it is the row of a creation. |
@@ -172,6 +173,23 @@ entity has exactly one creation event. The vocabulary must declare
 | `propose_all_eq` | `propose_all` gives exactly the answers and the world of proposing each kind in order. |
 | `proposeList_reach` | So the world after a batch is a world that proposals build. |
 | `every_batch_verifies` | After a world that proposals build and one batch, the referee passes. |
+
+## What is proved: rung 11, the two lookups
+
+An entity stores the event that created it (`Entity::created`), and
+the world keeps the ids of each name (`World::named`). A caller then
+finds the creation event, or an entity by its name, with no walk.
+
+| Theorem | The law |
+|---|---|
+| `every_world_created` | In every world that commits build from an empty world, each entity points at an event of the history. That event carries the same id, and it creates the entity with its id, its type, and its name. |
+| `apply_createdAt` | One event keeps that law, when its id is the length of the history. |
+| `every_world_named` | In every world that commits build from an empty world, the index holds each id of a name one time. An id sits under a name exactly when the world holds an entity with that id and that name. |
+| `index_step` | One step of `index` and then `apply` keeps that law. |
+
+The laws hold with or without `validate`. So by `reachP_reach`, they
+hold in every world that proposals build too. `replay_is_the_world`
+and `rewind_is_exact` carry them to a replay and a rewind.
 
 ## What you trust
 
@@ -202,7 +220,9 @@ entity has exactly one creation event. The vocabulary must declare
    - `Names<V>` (`src/names.rs`), the one map with a name for its
      key. Its model is `Std.ExtTreeMap String V compare`, the
      verified tree map of the Lean standard library. Each operation
-     is the `ExtTreeMap` operation of the same name.
+     is the `ExtTreeMap` operation of the same name. `take_key` is
+     the value of the name and then `erase`.
+   - `!=` on `EventId` and on `Tick`: `!=` on the number.
 3. **The contract tests of the models.** The tests in
    `src/names.rs`, `src/ids.rs`, and `src/fact.rs` check the laws of
    each map model against the real `BTreeMap` on random input. One
@@ -354,6 +374,14 @@ The ring check is a bounded walk: a chain with no ring ends within
 
 `propose_all` is an index loop that calls `propose` for each kind in
 order, with the same answers.
+
+### Rung 11: the two lookups (BUILT)
+
+`World::index` adds the id of a new entity to its name. `commit` and
+`replay_one` call it before `apply`, with the same test as `apply`:
+the id is new. It changes a value with `Names::take_key` and
+`insert`, as `apply` does with `Ids::take`. The queries `named` and
+`find` only read the index, so no law reads them.
 
 What waits: no law reads the remaining code yet.
 

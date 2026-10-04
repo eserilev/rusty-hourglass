@@ -429,16 +429,20 @@ theorem commit_apply {w w' : World} {t : time.Tick} {k : EventKind} {id : time.E
   cases hn : EventHistory.next_id w.history
   case ret id0 =>
     simp only [hn, bind_tc_ok] at hc
-    cases ha : World.apply w.entities w.vocabulary ⟨id0, t, k⟩
-    case ret bm =>
-      simp only [ha, bind_tc_ok, EventHistory.append] at hc
-      cases hp : alloc.vec.Vec.push w.history ⟨id0, t, k⟩
-      case ret eh =>
-        simp only [hp, bind_tc_ok, time.Tick.Insts.CoreCmpPartialOrdTick.gt] at hc
-        split at hc <;> simp only [ok.injEq, Prod.mk.injEq] at hc <;>
-          obtain ⟨rfl, rfl⟩ := hc <;> exact ha
-      all_goals simp [hp] at hc
-    all_goals simp [ha] at hc
+    cases hx : World.index w.named w.entities ⟨id0, t, k⟩
+    case ret nm =>
+      simp only [hx, bind_tc_ok] at hc
+      cases ha : World.apply w.entities w.vocabulary ⟨id0, t, k⟩
+      case ret bm =>
+        simp only [ha, bind_tc_ok, EventHistory.append] at hc
+        cases hp : alloc.vec.Vec.push w.history ⟨id0, t, k⟩
+        case ret eh =>
+          simp only [hp, bind_tc_ok, time.Tick.Insts.CoreCmpPartialOrdTick.gt] at hc
+          split at hc <;> simp only [ok.injEq, Prod.mk.injEq] at hc <;>
+            obtain ⟨rfl, rfl⟩ := hc <;> exact ha
+        all_goals simp [hp] at hc
+      all_goals simp [ha] at hc
+    all_goals simp [hx] at hc
   all_goals simp [hn] at hc
 
 theorem reach_one_fact_per_slot {w u : World} (hr : Reach w u)
@@ -459,7 +463,7 @@ theorem reach_keeps_ids {w u : World} (hr : Reach w u) :
 theorem every_world_one_fact_per_slot (v : FactVocabulary) (w0 w : World)
     (h0 : World.new v = ok w0) (hr : Reach w0 w) : oneFactPerSlot w.entities := by
   apply reach_one_fact_per_slot hr
-  simp only [World.new, ids.Ids.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
+  simp only [World.new, ids.Ids.new, names.Names.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
   subst h0
   intro k e hk
   simp at hk
@@ -638,7 +642,7 @@ theorem reach_one_target {w u : World} (hr : Reach w u)
 theorem every_world_one_target (v : FactVocabulary) (w0 w : World)
     (h0 : World.new v = ok w0) (hr : Reach w0 w) : oneTarget w.vocabulary w.entities := by
   apply reach_one_target hr
-  simp only [World.new, ids.Ids.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
+  simp only [World.new, ids.Ids.new, names.Names.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
   subst h0
   intro k e n hk
   simp at hk

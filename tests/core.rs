@@ -351,6 +351,92 @@ fn the_history_only_grows_and_the_ids_run_in_order() {
     assert_eq!(w.history().tail(90).len(), 4);
 }
 
+#[test]
+fn an_entity_points_at_the_event_that_created_it() {
+    let w = cast();
+    for e in w.entities() {
+        let ev = w
+            .history()
+            .get(e.created)
+            .expect("the event is in the history");
+        assert_eq!(
+            ev.kind,
+            EventKind::EntityCreated {
+                id: e.id,
+                entity_type: e.entity_type,
+                name: e.name.clone(),
+            }
+        );
+    }
+    assert_eq!(w.entity(MILL).map(|e| e.created), Some(EventId(2)));
+}
+
+#[test]
+fn a_second_creation_of_one_id_keeps_the_first_event() {
+    let mut w = cast();
+    w.commit(
+        Tick(2),
+        EventKind::EntityCreated {
+            id: ADA,
+            entity_type: EntityType::Place,
+            name: "Ada".to_string(),
+        },
+    );
+    assert_eq!(w.entity(ADA).map(|e| e.created), Some(EventId(0)));
+    assert_eq!(w.named("Ada"), &[ADA]);
+}
+
+#[test]
+fn find_reads_the_index_by_type_and_name() {
+    let mut w = cast();
+    // A person and a place share one name. Two places do too.
+    for (id, entity_type) in [
+        (EntityId(4), EntityType::Place),
+        (EntityId(5), EntityType::Person),
+        (EntityId(6), EntityType::Place),
+    ] {
+        w.propose(
+            Tick(2),
+            EventKind::EntityCreated {
+                id,
+                entity_type,
+                name: "Thornwood".to_string(),
+            },
+        )
+        .expect("a shared name is legal");
+    }
+    assert_eq!(
+        w.named("Thornwood"),
+        &[EntityId(4), EntityId(5), EntityId(6)]
+    );
+    assert_eq!(w.find(EntityType::Place, "Thornwood"), Some(EntityId(4)));
+    assert_eq!(w.find(EntityType::Person, "Thornwood"), Some(EntityId(5)));
+    assert_eq!(w.find(EntityType::Thing, "Thornwood"), None);
+    assert_eq!(w.find(EntityType::Person, "Ada"), Some(ADA));
+    assert!(w.named("Nobody").is_empty());
+}
+
+#[test]
+fn a_rewind_and_a_replay_rebuild_the_index() {
+    let mut w = cast();
+    let cut = w.history().next_id().0 - 1;
+    w.propose(
+        Tick(2),
+        EventKind::EntityCreated {
+            id: EntityId(4),
+            entity_type: EntityType::Person,
+            name: "Ada".to_string(),
+        },
+    )
+    .expect("a second Ada is legal");
+    assert_eq!(w.named("Ada"), &[ADA, EntityId(4)]);
+    assert_eq!(World::replay(dungeon(), w.history()), w);
+
+    w.rewind(EventId(cut));
+    assert_eq!(w.named("Ada"), &[ADA]);
+    assert_eq!(w.find(EntityType::Person, "Ada"), Some(ADA));
+}
+
 // ---------------------------------------------------------------
 // Step 3: located_in and the containment queries
 // ---------------------------------------------------------------

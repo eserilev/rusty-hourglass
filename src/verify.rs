@@ -16,7 +16,8 @@
 //!
 //! The invariants, from the spec:
 //!
-//! 1. The state equals the fold of the history.
+//! 1. The state equals the fold of the history, with the event
+//!    that created each entity.
 //! 2. Every fact name is in the vocabulary.
 //! 3. One open fact per slot.
 //! 4. Every `opened` points inside the history.
@@ -45,6 +46,7 @@ struct Row {
     name: String,
     from: Tick,
     until: Option<Tick>,
+    created: EventId,
     slots: Vec<Slot>,
 }
 
@@ -81,6 +83,7 @@ fn refold_one(w: &World, rows: &mut Ids<Row>, ev: &Event) {
                         name: name.clone(),
                         from: ev.tick,
                         until: None,
+                        created: ev.id,
                         slots: Vec::new(),
                     },
                 );
@@ -140,12 +143,7 @@ fn refold_one(w: &World, rows: &mut Ids<Row>, ev: &Event) {
 /// The slots that a start or an end keeps. A wide name clears every
 /// slot of the name, and a narrow one clears its own slot.
 #[allow(clippy::ptr_arg)]
-fn kept_slots(
-    slots: &[Slot],
-    name: &String,
-    linked_to: Option<EntityId>,
-    wide: bool,
-) -> Vec<Slot> {
+fn kept_slots(slots: &[Slot], name: &String, linked_to: Option<EntityId>, wide: bool) -> Vec<Slot> {
     let mut kept = Vec::new();
     let mut i = 0;
     while i < slots.len() {
@@ -218,6 +216,9 @@ fn same_row(w: &World, rows: &Ids<Row>, key: EntityId) -> bool {
         return false;
     }
     if row.from != e.existence.from || row.until != e.existence.until {
+        return false;
+    }
+    if row.created != e.created {
         return false;
     }
     if row.slots.len() != e.facts.len() {

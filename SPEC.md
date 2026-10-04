@@ -8,11 +8,11 @@ the containment queries, `validate` with every rejection, and
 `brief`. It holds two parts more, because the first consumer
 asked for them: the memory of a run (`memory.rs`) and the schema
 that grows (`migrate.rs`). A `verify` referee folds the history a
-second time and checks twelve invariants. Sixty-nine tests pass,
+second time and checks twelve invariants. Seventy-four tests pass,
 and ten Kani harnesses prove the join laws per value, the direction
 law, and the band laws. `merge` applies the join name by name.
 Aeneas translates the scalar core and the record merge to Lean.
-Sixty-three Lean theorems hold for every input with no bound
+Sixty-seven Lean theorems hold for every input with no bound
 (`lean/README.md`): the ten Kani laws, panic freedom of the join,
 and the record laws. A merge answers the same in either order, and
 it ignores the grouping. A merge with itself or with an empty
@@ -35,9 +35,12 @@ Seven more hold the ring law: in every world that proposals build,
 no place sits inside itself. Five more hold the referee law: in every
 world that proposals build, `verify` passes all twelve invariants.
 Three more show that a batch of proposals is a sequence of single
-proposals. No consumer calls the crate yet.
+proposals. Four more hold the two lookups: in every world that
+commits build, each entity points at the event that created it,
+and the name index holds exactly the entities of each name. The
+first consumer is Timeways.
 
-The build went past the decisions below in eleven places. The
+The build went past the decisions below in thirteen places. The
 section "Built past the decisions" names each one. Read that
 section before the code, and reject what you do not want.
 
@@ -838,6 +841,8 @@ struct Entity {
     name: String,
     /// Started, and maybe ended. One span, ever.
     existence: TimeSpan,
+    /// The event that created it. Built past the decisions, item 12.
+    created: EventId,
     /// Everything true of it right now, including where it sits.
     facts: Vec<Fact>,
 }
@@ -895,6 +900,8 @@ struct World {
     tick: Tick,
     vocabulary: FactVocabulary,
     entities: BTreeMap<EntityId, Entity>,
+    /// The ids of each name. Built past the decisions, item 13.
+    named: BTreeMap<String, Vec<EntityId>>,
     history: EventHistory,
 }
 
@@ -934,6 +941,13 @@ Not decided. Do not build these.
 - **Pruning and snapshots.** A world that runs for years grows an
   `EventHistory` that never stops. Dropping the old part needs a rolled-up
   state at the cut. Not decided, and not needed for a first world.
+
+  Measured on 2026-10-04: `replay` of 50,000 events takes 0.10 s in
+  a release build and 0.50 s in a debug build, on an Intel Core
+  Ultra 7 255H. The history copies the play of Timeways: 22 zones
+  of 8 subzones, 3,120 NPCs, a move of the player on each line,
+  trust changes, quests, and levels. That is 4,308 entities. The
+  limit for a snapshot is one second, so no snapshot is built.
 
   Pruning breaks decision 16. A `Fact` holds `opened: EventId`, and a
   pruned event leaves that pointing at nothing. Any pruning design must
@@ -1099,7 +1113,7 @@ the poor fits too, so nobody re-litigates them.
 5. Aeneas, one rung at a time. The built rungs are the scalar core,
    the record merge, the world laws, the rules inside `apply`, the
    band law, the direction law, the count laws, the ring law, the
-   referee law, and the batch.
+   referee law, the batch, and the two lookups.
    `lean/README.md` holds the rungs and the
    map of the code that does not translate yet.
 
@@ -1176,6 +1190,27 @@ between runs, on the `Game.progress` save path.
 11. **A `Faction` sits in a `Place`.** Decision 33 shows three
     lines of the `located_in` type map, and a faction is in none
     of them. Without a line, a faction has no place at all.
+
+12. **An entity stores the event that created it.** `Entity`
+    has `created: EventId`, as a `Fact` has `opened` (decision 16).
+    Without it, a caller walks the whole history to find the
+    `EntityCreated` of one entity. `apply` writes the field once,
+    at the creation, and nothing changes it after. A second
+    `EntityCreated` of a live id changes nothing, so the field
+    keeps the first event. `verify` compares the field with its
+    own fold, and the Lean theorem `every_world_created` proves
+    that the field names the creation event.
+13. **The world keeps an index from a name to its ids.** Without
+    it, a caller walks every entity to find one by its type and
+    name, and Timeways does that on almost every line.
+    `World::named(name)` gives the ids of the name, in the order
+    of creation. `World::find(entity_type, name)` gives the first
+    one of the type. A name never changes and an entity never
+    leaves the state, so `commit` and `replay` only add to the
+    index. `rewind` builds it again with `replay`. The index is
+    derived, like the entities, so no event writes it. The Lean
+    theorem `every_world_named` proves that it holds exactly the
+    entities of each name, each one time.
 
 Three answers to the "Open" list came out of the build, and each
 one is small enough to reverse:

@@ -10,6 +10,7 @@ import Hourglass.Counts
 import Hourglass.Cycle
 import Hourglass.Referee
 import Hourglass.Batch
+import Hourglass.Index
 
 open hourglass
 
@@ -264,3 +265,19 @@ open hourglass
 /-- info: 'hourglass.every_batch_verifies' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms every_batch_verifies
+
+/-- info: 'hourglass.apply_createdAt' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms apply_createdAt
+
+/-- info: 'hourglass.every_world_created' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms every_world_created
+
+/-- info: 'hourglass.index_step' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms index_step
+
+/-- info: 'hourglass.every_world_named' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in
+#print axioms every_world_named

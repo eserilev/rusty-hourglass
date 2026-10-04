@@ -78,6 +78,11 @@ def names.Names.remove_key {V : Type} (m : names.Names V) (k : String) :
     Result (names.Names V) :=
   ok (Std.ExtTreeMap.erase m k)
 
+/-- `Names::take_key` gives the value of the name and takes it out. -/
+def names.Names.take_key {V : Type} (m : names.Names V) (k : String) :
+    Result (Option V × names.Names V) :=
+  ok (m[k]?, Std.ExtTreeMap.erase m k)
+
 /-- `Names::keys` gives every name one time, in ascending order. A
     `Vec` holds at most `usize::MAX` items. A map that large does not
     fit in memory, so the model panics there. -/
@@ -187,6 +192,10 @@ def alloc.string.String.Insts.CoreCmpPartialEqString.ne (a b : String) : Result 
 
 /-- `Tick != Tick`, by the derive: `!=` on u64. -/
 def time.Tick.Insts.CoreCmpPartialEqTick.ne (a b : time.Tick) : Result Bool :=
+  ok (decide (a ≠ b))
+
+/-- `EventId != EventId`, by the derive: `!=` on u64. -/
+def time.EventId.Insts.CoreCmpPartialEqEventId.ne (a b : time.EventId) : Result Bool :=
   ok (decide (a ≠ b))
 
 /-- `Vec::remove(i)` takes the item at `i` out and shifts the rest

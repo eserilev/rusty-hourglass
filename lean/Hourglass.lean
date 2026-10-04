@@ -10,4 +10,5 @@ import Hourglass.Counts
 import Hourglass.Cycle
 import Hourglass.Referee
 import Hourglass.Batch
+import Hourglass.Index
 import Hourglass.Trust

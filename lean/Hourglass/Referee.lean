@@ -229,7 +229,7 @@ def factFrom (m : ids.Ids Entity) (ev : Event) (k : Nat) (x : Fact) : Prop :=
 /-- Where a row after `apply` comes from. -/
 def rowFrom (m : ids.Ids Entity) (ev : Event) (k : Nat) (e' : Entity) : Prop :=
   (∃ e, (m : Std.ExtTreeMap Nat Entity compare)[k]? = some e ∧ e'.id = e.id ∧
-    e'.entity_type = e.entity_type ∧ e'.name = e.name ∧
+    e'.entity_type = e.entity_type ∧ e'.name = e.name ∧ e'.created = e.created ∧
     e'.existence.from = e.existence.from ∧
     (e'.existence.until = e.existence.until ∨
       (e.existence.until = none ∧ e'.existence.until = some ev.tick)) ∧
@@ -238,11 +238,11 @@ def rowFrom (m : ids.Ids Entity) (ev : Event) (k : Nat) (e' : Entity) : Prop :=
     ev.kind = .EntityCreated id ty nm ∧
     e' = { id := id, entity_type := ty, «name» := nm,
            existence := { «from» := ev.tick, «until» := none },
-           facts := alloc.vec.Vec.new Fact })
+           created := ev.id, facts := alloc.vec.Vec.new Fact })
 
 theorem rowFrom_same {m : ids.Ids Entity} {ev : Event} {k : Nat} {e : Entity}
     (h : (m : Std.ExtTreeMap Nat Entity compare)[k]? = some e) : rowFrom m ev k e :=
-  Or.inl ⟨e, h, rfl, rfl, rfl, rfl, Or.inl rfl, fun x hx => Or.inl ⟨e, h, hx⟩⟩
+  Or.inl ⟨e, h, rfl, rfl, rfl, rfl, rfl, Or.inl rfl, fun x hx => Or.inl ⟨e, h, hx⟩⟩
 
 /-- Replace the row at `k`: every other key keeps its row. -/
 theorem rowFrom_replace {m : ids.Ids Entity} {ev : Event} {k : Nat} {row' : Entity}
@@ -304,7 +304,7 @@ theorem apply_shape (m : ids.Ids Entity) (v : FactVocabulary) (ev : Event) (m' :
         simp only [bind_tc_ok, ok.injEq] at ha
         subst ha
         apply rowFrom_replace
-        refine Or.inl ⟨row, hr, rfl, rfl, rfl, rfl, Or.inr ⟨?_, rfl⟩,
+        refine Or.inl ⟨row, hr, rfl, rfl, rfl, rfl, rfl, Or.inr ⟨?_, rfl⟩,
           fun x hx => Or.inl ⟨row, hr, hx⟩⟩
         simpa using hu
       · simp only [bind_tc_ok, ok.injEq] at ha
@@ -326,7 +326,7 @@ theorem apply_shape (m : ids.Ids Entity) (v : FactVocabulary) (ev : Event) (m' :
       simp only [ok.injEq] at ha
       subst ha
       apply rowFrom_replace
-      refine Or.inl ⟨row, hr, rfl, rfl, rfl, rfl, Or.inl rfl, fun x hx => ?_⟩
+      refine Or.inl ⟨row, hr, rfl, rfl, rfl, rfl, rfl, Or.inl rfl, fun x hx => ?_⟩
       rw [push_val_any hv1, List.mem_append, List.mem_singleton] at hx
       rcases hx with hx | rfl
       · have hsub : x ∈ row.facts.val := by
@@ -350,7 +350,7 @@ theorem apply_shape (m : ids.Ids Entity) (v : FactVocabulary) (ev : Event) (m' :
       simp only [ok.injEq] at ha
       subst ha
       apply rowFrom_replace
-      refine Or.inl ⟨row, hr, rfl, rfl, rfl, rfl, Or.inl rfl, fun x hx => ?_⟩
+      refine Or.inl ⟨row, hr, rfl, rfl, rfl, rfl, rfl, Or.inl rfl, fun x hx => ?_⟩
       cases o1 with
       | none =>
         simp only [ok.injEq] at hvf; subst hvf
@@ -388,7 +388,7 @@ theorem apply_shape (m : ids.Ids Entity) (v : FactVocabulary) (ev : Event) (m' :
       simp only [ok.injEq] at ha
       subst ha
       apply rowFrom_replace
-      refine Or.inl ⟨row, hr, rfl, rfl, rfl, rfl, Or.inl rfl, fun x hx => ?_⟩
+      refine Or.inl ⟨row, hr, rfl, rfl, rfl, rfl, rfl, Or.inl rfl, fun x hx => ?_⟩
       rw [drop_slot_ok hvf, List.mem_filter] at hx
       exact Or.inl ⟨row, hr, hx.1⟩
 
@@ -410,19 +410,23 @@ theorem commit_facts {w w' : World} {t : time.Tick} {k : EventKind} {id : time.E
   · unfold World.commit at hc
     rw [hn] at hc
     simp only [bind_tc_ok] at hc
-    cases ha : World.apply w.entities w.vocabulary ⟨id, t, k⟩ <;> rw [ha] at hc
-    case ret bm =>
-      simp only [bind_tc_ok, EventHistory.append] at hc
-      rw [hp] at hc
-      simp only [bind_tc_ok, time.Tick.Insts.CoreCmpPartialOrdTick.gt] at hc
-      split at hc <;> simp only [ok.injEq, Prod.mk.injEq] at hc <;> obtain ⟨_, hw⟩ := hc <;>
-        rw [← hw]
-      · rename_i hgt _
-        have : w.tick.val < t.val := by simpa using hgt
-        show t.val = _; omega
-      · rename_i hgt _
-        have : ¬ w.tick.val < t.val := by simpa using hgt
-        show w.tick.val = _; omega
+    cases hx : World.index w.named w.entities ⟨id, t, k⟩ <;> rw [hx] at hc
+    case ret nm =>
+      simp only [bind_tc_ok] at hc
+      cases ha : World.apply w.entities w.vocabulary ⟨id, t, k⟩ <;> rw [ha] at hc
+      case ret bm =>
+        simp only [bind_tc_ok, EventHistory.append] at hc
+        rw [hp] at hc
+        simp only [bind_tc_ok, time.Tick.Insts.CoreCmpPartialOrdTick.gt] at hc
+        split at hc <;> simp only [ok.injEq, Prod.mk.injEq] at hc <;> obtain ⟨_, hw⟩ := hc <;>
+          rw [← hw]
+        · rename_i hgt _
+          have : w.tick.val < t.val := by simpa using hgt
+          show t.val = _; omega
+        · rename_i hgt _
+          have : ¬ w.tick.val < t.val := by simpa using hgt
+          show w.tick.val = _; omega
+      all_goals simp at hc
     all_goals simp at hc
 
 
@@ -494,7 +498,7 @@ theorem apply_types (w : World) (ev : Event) (m' : ids.Ids Entity)
     obtain ⟨e2', he2', hty2, _⟩ := key_stays ha he2
     exact ⟨e2', r, he2', hr, by rw [hty2]; exact hty⟩
   rcases apply_shape w.entities w.vocabulary ev m' ha k e' hk' with
-    ⟨e, he, hid, hty, _, _, _, hfacts⟩ | ⟨_, _, _, _, _, _, rfl⟩
+    ⟨e, he, hid, hty, _, _, _, _, hfacts⟩ | ⟨_, _, _, _, _, _, rfl⟩
   · rw [hid, hty]
     rcases hfacts x hx with ⟨e0, he0, hx0⟩ | ⟨_, who, hwho, hnew⟩
     · rw [he] at he0; simp only [Option.some.injEq] at he0; subst he0
@@ -524,7 +528,7 @@ theorem apply_opened {m m' : ids.Ids Entity} {v : FactVocabulary} {ev : Event} {
     (h : openedOk m n) (hid : ev.id.val = n) (ha : World.apply m v ev = ok m') :
     openedOk m' (n + 1) := by
   intro k e' x hk' hx
-  rcases apply_shape m v ev m' ha k e' hk' with ⟨e, he, _, _, _, _, _, hfacts⟩ | ⟨_, _, _, _, _, _, rfl⟩
+  rcases apply_shape m v ev m' ha k e' hk' with ⟨e, he, _, _, _, _, _, _, hfacts⟩ | ⟨_, _, _, _, _, _, rfl⟩
   · rcases hfacts x hx with ⟨e0, he0, hx0⟩ | ⟨hop, _⟩
     · have := h k e0 x he0 hx0; omega
     · rw [hop, hid]; omega
@@ -541,7 +545,7 @@ theorem apply_span {m m' : ids.Ids Entity} {v : FactVocabulary} {ev : Event} {T 
     spanOk m' (max T ev.tick.val) := by
   intro k e' hk'
   rcases apply_shape m v ev m' ha k e' hk' with
-    ⟨e, he, _, _, _, hfrom, huntil, _⟩ | ⟨_, _, _, _, _, _, rfl⟩
+    ⟨e, he, _, _, _, _, hfrom, huntil, _⟩ | ⟨_, _, _, _, _, _, rfl⟩
   · obtain ⟨h1, h2⟩ := h k e he
     rw [hfrom]
     refine ⟨by omega, fun u hu => ?_⟩
@@ -757,7 +761,7 @@ theorem take_set_map {α : Type} (f : α → α) :
 
 theorem update_loop_ok (ei : time.EventId) (nm : String) (lt : Option time.EntityId) (tv : Std.I64) :
     ∀ (n : Nat) (row : verify.Row) (j : Usize), row.slots.length - j.val = n →
-      ∃ v, verify.refold_one_loop ei nm lt tv row j = ok (row.kind, row.name, row.from, row.until, v) ∧
+      ∃ v, verify.refold_one_loop ei nm lt tv row j = ok (row.kind, row.name, row.from, row.until, row.created, v) ∧
         v.val = row.slots.val.take j.val ++ (row.slots.val.drop j.val).map (updT nm lt tv ei) := by
   intro n
   induction n with
@@ -797,7 +801,7 @@ theorem update_loop_ok (ei : time.EventId) (nm : String) (lt : Option time.Entit
 /-- A referee row holds exactly the entity. -/
 def rowMatch (r : verify.Row) (e : Entity) : Prop :=
   r.kind = e.entity_type ∧ r.name = e.name ∧ r.from = e.existence.from ∧
-    r.until = e.existence.until ∧ r.slots.val = e.facts.val.map slotT
+    r.until = e.existence.until ∧ r.created = e.created ∧ r.slots.val = e.facts.val.map slotT
 
 /-- The referee rows hold exactly the entities, key by key. -/
 def rowsMatch (rows : ids.Ids verify.Row) (m : ids.Ids Entity) : Prop :=
@@ -918,11 +922,11 @@ theorem refold_step (w : World) (rows : ids.Ids verify.Row) (m m' : ids.Ids Enti
       subst ha
       refine ⟨Std.ExtTreeMap.insert rows id.val
         { kind := ty, «name» := nm, «from» := ev.tick, «until» := none,
-          slots := alloc.vec.Vec.new SlotT }, ?_, ?_⟩
+          created := ev.id, slots := alloc.vec.Vec.new SlotT }, ?_, ?_⟩
       · unfold verify.refold_one
         simp [hkd, ids.Ids.contains, rm_contains hm, hc, alloc.string.String.Insts.CoreCloneClone.clone,
           ids.Ids.insert]
-      · exact rm_insert hm _ ⟨rfl, rfl, rfl, rfl, by simp [alloc.vec.Vec.new]⟩
+      · exact rm_insert hm _ ⟨rfl, rfl, rfl, rfl, rfl, by simp [alloc.vec.Vec.new]⟩
   case EntityDestroyed id =>
     simp only [ids.Ids.take, bind_tc_ok] at ha
     cases hr : (m : Std.ExtTreeMap Nat Entity compare)[id.val]? with
@@ -932,7 +936,7 @@ theorem refold_step (w : World) (rows : ids.Ids verify.Row) (m m' : ids.Ids Enti
       unfold verify.refold_one
       simp [hkd, ids.Ids.take, rm_none hm hr]
     | some row =>
-      obtain ⟨r, hrr, hk, hn, hf, hu, hsl⟩ := rm_some hm hr
+      obtain ⟨r, hrr, hk, hn, hf, hu, hcr, hsl⟩ := rm_some hm hr
       simp [hr, ids.Ids.insert] at ha
       refine ⟨Std.ExtTreeMap.insert (Std.ExtTreeMap.erase rows id.val) id.val
         { r with «until» := if r.until.isNone then some ev.tick else r.until }, ?_, ?_⟩
@@ -943,7 +947,7 @@ theorem refold_step (w : World) (rows : ids.Ids verify.Row) (m m' : ids.Ids Enti
         · rename_i hnone
           have : r.until.isNone = true := by rw [hu, hnone]; rfl
           simp only [this, if_true]
-          exact rm_insert (rm_erase hm _) _ ⟨hk, hn, hf, rfl, hsl⟩
+          exact rm_insert (rm_erase hm _) _ ⟨hk, hn, hf, rfl, hcr, hsl⟩
         · rename_i hnone
           have : r.until.isNone = false := by
             rw [hu]
@@ -951,7 +955,7 @@ theorem refold_step (w : World) (rows : ids.Ids verify.Row) (m m' : ids.Ids Enti
             | none => exact absurd hx hnone
             | some _ => rfl
           simp only [this, Bool.false_eq_true, if_false]
-          exact rm_insert (rm_erase hm _) _ ⟨hk, hn, hf, hu, hsl⟩
+          exact rm_insert (rm_erase hm _) _ ⟨hk, hn, hf, hu, hcr, hsl⟩
   case FactStart who nm value lt =>
     rw [bind_eq_ok] at ha
     obtain ⟨wide, hwide, ha⟩ := ha
@@ -963,7 +967,7 @@ theorem refold_step (w : World) (rows : ids.Ids verify.Row) (m m' : ids.Ids Enti
       unfold verify.refold_one
       simp [hkd, one_target_eq, hwide, ids.Ids.take, rm_none hm hr]
     | some row =>
-      obtain ⟨r, hrr, hk, hn, hf, hu, hsl⟩ := rm_some hm hr
+      obtain ⟨r, hrr, hk, hn, hf, hu, hcr, hsl⟩ := rm_some hm hr
       simp [hr, ids.Ids.insert, alloc.string.String.Insts.CoreCloneClone.clone] at ha
       rw [bind_eq_ok] at ha
       obtain ⟨vf, hvf, ha⟩ := ha
@@ -990,7 +994,7 @@ theorem refold_step (w : World) (rows : ids.Ids verify.Row) (m m' : ids.Ids Enti
       · unfold verify.refold_one
         simp [hkd, one_target_eq, hwide, ids.Ids.take, hrr, hkept,
           alloc.string.String.Insts.CoreCloneClone.clone, hk1, ids.Ids.insert]
-      · refine rm_insert (rm_erase hm _) _ ⟨hk, hn, hf, hu, ?_⟩
+      · refine rm_insert (rm_erase hm _) _ ⟨hk, hn, hf, hu, hcr, ?_⟩
         show k1.val = v1.val.map slotT
         rw [hk1v, push_val_any hv1, hkv', List.map_append]
         rfl
@@ -1003,7 +1007,7 @@ theorem refold_step (w : World) (rows : ids.Ids verify.Row) (m m' : ids.Ids Enti
       unfold verify.refold_one
       simp [hkd, ids.Ids.take, rm_none hm hr]
     | some row =>
-      obtain ⟨r, hrr, hk, hn, hf, hu, hsl⟩ := rm_some hm hr
+      obtain ⟨r, hrr, hk, hn, hf, hu, hcr, hsl⟩ := rm_some hm hr
       simp [hr, ids.Ids.insert] at ha
       obtain ⟨v, hv, hvv⟩ := update_loop_ok ev.id nm lt tv _ r 0#usize rfl
       rw [bind_eq_ok] at ha
@@ -1013,10 +1017,11 @@ theorem refold_step (w : World) (rows : ids.Ids verify.Row) (m m' : ids.Ids Enti
       simp only [ok.injEq] at ha
       subst ha
       refine ⟨Std.ExtTreeMap.insert (Std.ExtTreeMap.erase rows who.val) who.val
-        { kind := r.kind, «name» := r.name, «from» := r.from, «until» := r.until, slots := v }, ?_, ?_⟩
+        { kind := r.kind, «name» := r.name, «from» := r.from, «until» := r.until,
+          created := r.created, slots := v }, ?_, ?_⟩
       · unfold verify.refold_one
         simp [hkd, ids.Ids.take, hrr, hv, ids.Ids.insert]
-      refine rm_insert (rm_erase hm _) _ ⟨hk, hn, hf, hu, ?_⟩
+      refine rm_insert (rm_erase hm _) _ ⟨hk, hn, hf, hu, hcr, ?_⟩
       show v.val = vf.val.map slotT
       simp at hvv
       rw [hvv, hsl]
@@ -1067,7 +1072,7 @@ theorem refold_step (w : World) (rows : ids.Ids verify.Row) (m m' : ids.Ids Enti
       unfold verify.refold_one
       simp [hkd, ids.Ids.take, rm_none hm hr]
     | some row =>
-      obtain ⟨r, hrr, hk, hn, hf, hu, hsl⟩ := rm_some hm hr
+      obtain ⟨r, hrr, hk, hn, hf, hu, hcr, hsl⟩ := rm_some hm hr
       simp [hr, ids.Ids.insert] at ha
       rw [bind_eq_ok] at ha
       obtain ⟨vf, hvf, ha⟩ := ha
@@ -1078,7 +1083,7 @@ theorem refold_step (w : World) (rows : ids.Ids verify.Row) (m m' : ids.Ids Enti
         { r with slots := kept }, ?_, ?_⟩
       · unfold verify.refold_one
         simp [hkd, ids.Ids.take, hrr, hkept, ids.Ids.insert]
-      refine rm_insert (rm_erase hm _) _ ⟨hk, hn, hf, hu, ?_⟩
+      refine rm_insert (rm_erase hm _) _ ⟨hk, hn, hf, hu, hcr, ?_⟩
       show kept.val = vf.val.map slotT
       rw [hkv, drop_slot_ok hvf]
       have : r.slots.deref.val = row.facts.val.map slotT := by
@@ -1106,8 +1111,8 @@ def refOk (w : World) : Prop :=
 
 theorem reachP_ref (v : FactVocabulary) (w0 w : World) (h0 : World.new v = ok w0)
     (hr : ReachP w0 w) : refOk w := by
-  have hw0 : w0 = ⟨0#u64, v, ∅, alloc.vec.Vec.new Event⟩ := by
-    simp only [World.new, ids.Ids.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
+  have hw0 : w0 = ⟨0#u64, v, ∅, ∅, alloc.vec.Vec.new Event⟩ := by
+    simp only [World.new, ids.Ids.new, names.Names.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
     exact h0.symm
   induction hr with
   | refl =>
@@ -1327,12 +1332,13 @@ theorem same_row_true {w : World} {rows : ids.Ids verify.Row} (hm : rowsMatch ro
     (he : (w.entities : Std.ExtTreeMap Nat Entity compare)[key.val]? = some e) :
     verify.same_row w rows key = ok true := by
   have hid : e.id.val = key.val := hk _ e he
-  obtain ⟨r, hr, hkd, hn, hf, hu, hsl⟩ := rm_some hm he
+  obtain ⟨r, hr, hkd, hn, hf, hu, hcr, hsl⟩ := rm_some hm he
   have hr' : (rows : Std.ExtTreeMap Nat verify.Row compare)[e.id.val]? = some r := by rw [hid]; exact hr
   unfold verify.same_row
-  simp only [entity_eq, he, ids.Ids.get, hr', bind_tc_ok, hkd, hn, hf, hu,
+  simp only [entity_eq, he, ids.Ids.get, hr', bind_tc_ok, hkd, hn, hf, hu, hcr,
     entity.EntityType.Insts.CoreCmpPartialEqEntityType.ne, bne_self_eq_false,
     alloc.string.String.Insts.CoreCmpPartialEqString.ne, time.Tick.Insts.CoreCmpPartialEqTick.ne,
+    time.EventId.Insts.CoreCmpPartialEqEventId.ne,
     core.option.Option.Insts.CoreCmpPartialEqOption.ne, ne_eq, not_true_eq_false, decide_false,
     Bool.false_eq_true, if_false]
   have hopt : core.option.Option.Insts.CoreCmpPartialEqOption.eq time.Tick.Insts.CoreCmpPartialEqTick
@@ -2088,7 +2094,7 @@ theorem walk_true {w : World} (L : Laws w) (start : time.EntityId) :
 theorem entity_loop_true {w : World} (L : Laws w) {k : Nat} {e : Entity}
     (he : (w.entities : Std.ExtTreeMap Nat Entity compare)[k]? = some e) :
     ∀ (n : Nat) (i : Usize), e.facts.length - i.val = n →
-      verify.entity_sound_loop w e.id e.entity_type e.name e.existence e.facts i = ok true := by
+      verify.entity_sound_loop w e.id e.entity_type e.name e.existence e.created e.facts i = ok true := by
   intro n
   induction n with
   | zero =>
@@ -2106,7 +2112,7 @@ theorem entity_loop_true {w : World} (L : Laws w) {k : Nat} {e : Entity}
     obtain ⟨i2, hadd, _⟩ := (Aeneas.Std.WP.spec_equiv_exists _ _).1
       (UScalar.add_spec (x := i) (y := 1#usize) (by scalar_tac))
     simp only [hc, if_true]
-    have heta : (⟨e.id, e.entity_type, e.name, e.existence, e.facts⟩ : Entity) = e := rfl
+    have heta : (⟨e.id, e.entity_type, e.name, e.existence, e.created, e.facts⟩ : Entity) = e := rfl
     rw [heta, hf]
     simp only [if_true, hadd, bind_tc_ok]
     exact ih i2 (by scalar_tac)
@@ -2207,7 +2213,7 @@ theorem every_proposed_world_verifies (v : FactVocabulary) (w0 w : World)
     (hr : ReachP w0 w) : verify.verify w = ok true := by
   have hvoc : w.vocabulary = v := by
     rw [reachP_vocab hr]
-    simp only [World.new, ids.Ids.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
+    simp only [World.new, ids.Ids.new, names.Names.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
     rw [← h0]
   have ht := every_proposed_world_targets v w0 w h0 hr
   apply verify_true
@@ -2220,7 +2226,7 @@ theorem every_proposed_world_verifies (v : FactVocabulary) (w0 w : World)
     holders := every_proposed_world_holders v w0 w h0 hr
     key := by
       apply (reachP_holders hr _).2
-      simp only [World.new, ids.Ids.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
+      simp only [World.new, ids.Ids.new, names.Names.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
       subst h0
       exact ⟨fun n t _ _ _ _ _ _ _ => by simp [holdersCount, Std.ExtTreeMap.keys_eq_nil_iff.2 rfl],
         fun k _ hk => by simp at hk⟩

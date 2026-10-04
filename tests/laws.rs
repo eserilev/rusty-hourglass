@@ -369,6 +369,67 @@ fn every_accepted_history_replays_to_the_same_state() {
     }
 }
 
+/// The scan that the index replaces: every entity of the name, in
+/// the order of the events that created them.
+fn scan_named<'a>(w: &'a World, name: &str) -> Vec<&'a Entity> {
+    let mut found: Vec<&Entity> = w.entities().filter(|e| e.name == name).collect();
+    found.sort_by_key(|e| e.created);
+    found
+}
+
+#[test]
+fn the_index_and_the_creation_event_agree_with_every_entity() {
+    let names = ["Ada", "Bren", "the mill"];
+    let kinds = EntityType::all();
+    for seed in 0..20u64 {
+        let mut rng = Lcg(seed.wrapping_mul(69_069).wrapping_add(5));
+        let mut w = peopled();
+        for step in 0..80 {
+            // One step in three founds a thing. Ids repeat on
+            // purpose, and a commit skips the gate.
+            let kind = if rng.below(3) == 0 {
+                EventKind::EntityCreated {
+                    id: EntityId(rng.below(CAST as u64 + 8) as u32),
+                    entity_type: kinds[rng.below(4) as usize],
+                    name: names[rng.below(3) as usize].to_string(),
+                }
+            } else {
+                proposal(&mut rng)
+            };
+            if rng.below(2) == 0 {
+                let _ = w.propose(Tick(2 + step / 6), kind);
+            } else {
+                w.commit(Tick(2 + step / 6), kind);
+            }
+        }
+        for name in names {
+            let found = scan_named(&w, name);
+            let ids: Vec<EntityId> = found.iter().map(|e| e.id).collect();
+            assert_eq!(w.named(name), ids.as_slice(), "seed {seed} name {name}");
+            for t in kinds {
+                let first = found.iter().find(|e| e.entity_type == t).map(|e| e.id);
+                assert_eq!(w.find(t, name), first, "seed {seed} name {name}");
+            }
+        }
+        for e in w.entities() {
+            let ev = w
+                .history()
+                .get(e.created)
+                .expect("the event is in the history");
+            assert_eq!(
+                ev.kind,
+                EventKind::EntityCreated {
+                    id: e.id,
+                    entity_type: e.entity_type,
+                    name: e.name.clone(),
+                },
+                "seed {seed}"
+            );
+        }
+        assert_eq!(World::replay(world_schema(), w.history()), w, "seed {seed}");
+    }
+}
+
 #[test]
 fn the_referee_catches_what_the_gate_would_have_refused() {
     // `commit` skips the gate, so it builds the worlds that must

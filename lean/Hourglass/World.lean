@@ -50,16 +50,20 @@ theorem commit_ok {w w' : World} {t : time.Tick} {k : EventKind} {id : time.Even
   cases hn : EventHistory.next_id w.history
   case ret id0 =>
     simp only [hn, bind_tc_ok] at hc
-    cases ha : World.apply w.entities w.vocabulary ⟨id0, t, k⟩
-    case ret bm =>
-      simp only [ha, bind_tc_ok, EventHistory.append] at hc
-      cases hp : alloc.vec.Vec.push w.history ⟨id0, t, k⟩
-      case ret eh =>
-        simp only [hp, bind_tc_ok, time.Tick.Insts.CoreCmpPartialOrdTick.gt] at hc
-        split at hc <;> simp only [ok.injEq, Prod.mk.injEq] at hc <;>
-          obtain ⟨rfl, rfl⟩ := hc <;> simp [hp]
-      all_goals simp [hp] at hc
-    all_goals simp [ha] at hc
+    cases hx : World.index w.named w.entities ⟨id0, t, k⟩
+    case ret nm =>
+      simp only [hx, bind_tc_ok] at hc
+      cases ha : World.apply w.entities w.vocabulary ⟨id0, t, k⟩
+      case ret bm =>
+        simp only [ha, bind_tc_ok, EventHistory.append] at hc
+        cases hp : alloc.vec.Vec.push w.history ⟨id0, t, k⟩
+        case ret eh =>
+          simp only [hp, bind_tc_ok, time.Tick.Insts.CoreCmpPartialOrdTick.gt] at hc
+          split at hc <;> simp only [ok.injEq, Prod.mk.injEq] at hc <;>
+            obtain ⟨rfl, rfl⟩ := hc <;> simp [hp]
+        all_goals simp [hp] at hc
+      all_goals simp [ha] at hc
+    all_goals simp [hx] at hc
   all_goals simp [hn] at hc
 
 /-- THE STEP LAW. A step of replay on the event that a commit made
@@ -73,17 +77,21 @@ theorem replay_one_of_commit {w w' : World} {t : time.Tick} {k : EventKind}
   cases hn : EventHistory.next_id w.history
   case ret id0 =>
     simp only [hn, bind_tc_ok] at hc ⊢
-    cases ha : World.apply w.entities w.vocabulary ⟨id0, t, k⟩
-    case ret bm =>
-      simp only [ha, bind_tc_ok, EventHistory.append] at hc
-      cases hp : alloc.vec.Vec.push w.history ⟨id0, t, k⟩
-      case ret eh =>
-        simp only [hp, bind_tc_ok, time.Tick.Insts.CoreCmpPartialOrdTick.gt] at hc
-        split at hc <;> simp only [ok.injEq, Prod.mk.injEq] at hc <;>
-          obtain ⟨rfl, rfl⟩ := hc <;>
-          simp_all [time.Tick.Insts.CoreCmpPartialOrdTick.gt, UScalar.lt_equiv]
-      all_goals simp [hp] at hc
-    all_goals simp [ha] at hc
+    cases hx : World.index w.named w.entities ⟨id0, t, k⟩
+    case ret nm =>
+      simp only [hx, bind_tc_ok] at hc
+      cases ha : World.apply w.entities w.vocabulary ⟨id0, t, k⟩
+      case ret bm =>
+        simp only [ha, bind_tc_ok, EventHistory.append] at hc
+        cases hp : alloc.vec.Vec.push w.history ⟨id0, t, k⟩
+        case ret eh =>
+          simp only [hp, bind_tc_ok, time.Tick.Insts.CoreCmpPartialOrdTick.gt] at hc
+          split at hc <;> simp only [ok.injEq, Prod.mk.injEq] at hc <;>
+            obtain ⟨rfl, rfl⟩ := hc <;>
+            simp_all [time.Tick.Insts.CoreCmpPartialOrdTick.gt, UScalar.lt_equiv]
+        all_goals simp [hp] at hc
+      all_goals simp [ha] at hc
+    all_goals simp [hx] at hc
   all_goals simp [hn] at hc
 
 /-! ## Replay is a fold of the step -/
@@ -120,7 +128,7 @@ theorem replay_loop_eq (s : Slice Event) :
 /-- `World::new` never fails, and it starts with an empty history. -/
 theorem new_ok (v : FactVocabulary) :
     ∃ w0, World.new v = ok w0 ∧ w0.history.val = [] ∧ w0.vocabulary = v := by
-  simp [World.new, ids.Ids.new, EventHistory.new]
+  simp [World.new, ids.Ids.new, names.Names.new, EventHistory.new]
 
 theorem replay_eq (v : FactVocabulary) (h : EventHistory) (w0 : World)
     (h0 : World.new v = ok w0) :

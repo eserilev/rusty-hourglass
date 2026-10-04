@@ -42,6 +42,7 @@ use crate::entity::{Entity, EntityType};
 use crate::event::{Event, EventHistory, EventKind};
 use crate::fact::{Count, Fact, FactRules, FactVocabulary, LOCATED_IN};
 use crate::ids::Ids;
+use crate::names::Names;
 use crate::reject::Rejection;
 use crate::time::{EntityId, EventId, Tick, TimeSpan};
 use crate::validate;
@@ -55,6 +56,9 @@ pub struct World {
     pub tick: Tick,
     pub vocabulary: FactVocabulary,
     entities: Ids<Entity>,
+    /// The ids of each name, in the order of creation. A name never
+    /// changes and an entity never leaves, so the index only grows.
+    named: Names<Vec<EntityId>>,
     history: EventHistory,
 }
 
@@ -65,6 +69,7 @@ impl World {
             tick: Tick(0),
             vocabulary,
             entities: Ids::new(),
+            named: Names::new(),
             history: EventHistory::new(),
         }
     }
@@ -76,6 +81,25 @@ impl World {
     /// Every entity, in one order on every machine.
     pub fn entities(&self) -> impl Iterator<Item = &Entity> {
         self.entities.values()
+    }
+
+    /// Every entity of this name, in the order of creation. Two
+    /// places can share a name. The answer reads an index, not the
+    /// whole world.
+    pub fn named(&self, name: &str) -> &[EntityId] {
+        match self.named.get(name) {
+            Some(ids) => ids,
+            None => &[],
+        }
+    }
+
+    /// The first entity of this type and name, in the order of
+    /// creation.
+    pub fn find(&self, entity_type: EntityType, name: &str) -> Option<EntityId> {
+        self.named(name)
+            .iter()
+            .copied()
+            .find(|id| self.type_of(*id) == Some(entity_type))
     }
 
     pub fn len(&self) -> usize {
@@ -142,6 +166,7 @@ impl World {
         // Aeneas writes the same name for both, and the Lean breaks.
         let id = self.history.next_id();
         let ev = Event { id, tick, kind };
+        World::index(&mut self.named, &self.entities, &ev);
         World::apply(&mut self.entities, &self.vocabulary, &ev);
         self.history.append(ev);
         if tick > self.tick {
@@ -177,6 +202,7 @@ impl World {
                             entity_type: *entity_type,
                             name: name.clone(),
                             existence: TimeSpan::open(ev.tick),
+                            created: ev.id,
                             facts: Vec::new(),
                         },
                     );
@@ -247,6 +273,24 @@ impl World {
         }
     }
 
+    /// Add the id of a new entity to the index of its name. It reads
+    /// the entities before `apply`, because `apply` creates an entity
+    /// only under the same test. The `match` keeps the model of the
+    /// proofs small: it needs no `unwrap_or_default`.
+    #[allow(clippy::manual_unwrap_or_default)]
+    fn index(named: &mut Names<Vec<EntityId>>, entities: &Ids<Entity>, ev: &Event) {
+        if let EventKind::EntityCreated { id, name, .. } = &ev.kind {
+            if !entities.contains(*id) {
+                let mut ids = match named.take_key(name) {
+                    Some(ids) => ids,
+                    None => Vec::new(),
+                };
+                ids.push(*id);
+                named.insert(name.clone(), ids);
+            }
+        }
+    }
+
     // -----------------------------------------------------------
     // Replay and rollback
     // -----------------------------------------------------------
@@ -271,9 +315,10 @@ impl World {
         out
     }
 
-    /// One step of `replay`: the same three writes as `commit`.
+    /// One step of `replay`: the same four writes as `commit`.
     fn replay_one(&mut self, ev: &Event) {
         self.history.push(ev.tick, ev.kind.clone());
+        World::index(&mut self.named, &self.entities, ev);
         World::apply(&mut self.entities, &self.vocabulary, ev);
         if ev.tick > self.tick {
             self.tick = ev.tick;

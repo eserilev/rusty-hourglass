@@ -399,7 +399,7 @@ theorem reachP_in_band {w u : World} (hr : ReachP w u)
 theorem every_proposed_world_in_band (v : FactVocabulary) (w0 w : World)
     (h0 : World.new v = ok w0) (hr : ReachP w0 w) : inBand w.vocabulary w.entities := by
   apply reachP_in_band hr
-  simp only [World.new, ids.Ids.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
+  simp only [World.new, ids.Ids.new, names.Names.new, EventHistory.new, bind_tc_ok, ok.injEq] at h0
   subst h0
   intro k e x hk
   simp at hk

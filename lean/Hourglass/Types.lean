@@ -60,17 +60,17 @@ structure time.TimeSpan where
   «from» : time.Tick
   «until» : Option time.Tick
 
-/-- [hourglass::time::EntityId]
-    Source: 'src/time.rs', lines 16:0-16:29
-    Visibility: public -/
-@[reducible]
-def time.EntityId := Std.U32
-
 /-- [hourglass::time::EventId]
     Source: 'src/time.rs', lines 23:0-23:28
     Visibility: public -/
 @[reducible]
 def time.EventId := Std.U64
+
+/-- [hourglass::time::EntityId]
+    Source: 'src/time.rs', lines 16:0-16:29
+    Visibility: public -/
+@[reducible]
+def time.EntityId := Std.U32
 
 /-- [hourglass::fact::Fact]
     Source: 'src/fact.rs', lines 357:0-367:1
@@ -82,13 +82,14 @@ structure fact.Fact where
   opened : time.EventId
 
 /-- [hourglass::entity::Entity]
-    Source: 'src/entity.rs', lines 49:0-57:1
+    Source: 'src/entity.rs', lines 49:0-60:1
     Visibility: public -/
 structure entity.Entity where
   id : time.EntityId
   entity_type : entity.EntityType
   «name» : String
   existence : time.TimeSpan
+  created : time.EventId
   facts : alloc.vec.Vec fact.Fact
 
 /-- [hourglass::event::EventKind]
@@ -312,21 +313,23 @@ inductive reject.Rejection where
 | Contradiction : reject.Contradiction → reject.Rejection
 
 /-- [hourglass::world::World]
-    Source: 'src/world.rs', lines 54:0-59:1
+    Source: 'src/world.rs', lines 55:0-63:1
     Visibility: public -/
 structure world.World where
   tick : time.Tick
   vocabulary : fact.FactVocabulary
   entities : ids.Ids entity.Entity
+  named : names.Names (alloc.vec.Vec time.EntityId)
   history : event.EventHistory
 
 /-- [hourglass::verify::Row]
-    Source: 'src/verify.rs', lines 43:0-49:1 -/
+    Source: 'src/verify.rs', lines 44:0-51:1 -/
 structure verify.Row where
   kind : entity.EntityType
   «name» : String
   «from» : time.Tick
   «until» : Option time.Tick
+  created : time.EventId
   slots : alloc.vec.Vec (String × (Option Std.I64) × (Option time.EntityId)
     × time.EventId)
 
